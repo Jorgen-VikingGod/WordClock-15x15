@@ -1,0 +1,306 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tourette WordClock</title>
+
+    <link rel="stylesheet" href="/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="/css/jquery.minicolors.min.css" />
+
+    <style>
+      html,
+      body {
+        height: 100%;
+      }
+      #page-content {
+        flex: 1 0 auto;
+        padding-bottom: 70px;
+      }
+      #sticky-footer {
+        position: fixed;
+        z-index: 9;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+      }
+      .d-flex .control-input {
+        min-width: 80px;
+        max-width: 80px;
+        padding-right: 10px;
+      }
+      .d-flex .control-buttons {
+        min-width: 80px;
+        max-width: 80px;
+        padding-left: 10px;
+        margin-right: 10px;
+      }
+      .d-flex .control-label {
+        min-width: 120px;
+        max-width: 120px;
+        padding-right: 10px;
+      }
+    </style>
+
+    <link rel="icon" href="/images/atom196.png" />
+  </head>
+  <body class="d-flex flex-column bg-black text-white">
+    <div id="page-content">
+      <div id="container" class="container-fluid row">
+        <h3>Tourette WordClock</h3>
+        <div id="timeTemplate" class="col-sm-12">
+          <div class="card bg-light text-white mb-3">
+            <div class="card-header">Time</div>
+            <div class="card-body" id="time"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="templates" style="display: none;">
+        <div id="sectionTemplate" class="">
+          <div class="card bg-light text-white mb-3">
+            <div class="card-header" id="sectionTemplatePanelTitle"></div>
+            <div class="card-body" id="sectionTemplatePanelBody"></div>
+          </div>
+        </div>
+
+        <div id="numberTemplate" class="form-group d-flex">
+          <label class="control-label"></label>
+          <input
+            class="form-control input control-input"
+            type="number"
+            step="1"
+            min="0"
+            max="255"
+          />
+          <input
+            class="custom-range flex-grow-1 pl-3"
+            type="range"
+            step="1"
+            min="0"
+            max="255"
+          />
+        </div>
+
+        <div id="booleanTemplate" class="form-group d-flex">
+          <label class="control-label"></label>
+          <div class="flex-grow-1">
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-secondary" id="btnOn">
+                On
+              </button>
+              <button type="button" class="btn btn-secondary" id="btnOff">
+                Off
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="selectTemplate" class="form-group d-flex">
+          <label class="control-label"></label>
+          <div class="flex-grow-1 d-flex input-group">
+            <select class="form-control flex-grow-1"></select>
+            <div class="input-group-append">
+              <button
+                type="button"
+                class="btn btn-secondary btn-previous"
+                aria-label="Previous"
+                title="Previous"
+              >
+                «
+              </button>
+              <button
+                type="button"
+                class="btn btn-secondary btn-next"
+                aria-label="Next"
+                title="Next"
+              >
+                »
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="colorPaletteTemplate" class="form-group d-flex">
+          <label class="control-label color-label"></label>
+          <div
+            class="flex-grow-1 btn-group btn-group-justified d-flex flex-wrap"
+            role="group"
+          >
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #ff0000;"
+                title="Red"
+              >
+                &#160;
+              </button>
+            </div>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #ffff00;"
+                title="Yellow"
+              >
+                &#160;
+              </button>
+            </div>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #00ff00;"
+                title="Green"
+              >
+                &#160;
+              </button>
+            </div>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #00ffff;"
+                title="Cyan"
+              >
+                &#160;
+              </button>
+            </div>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #0080ff;"
+                title="Azure"
+              >
+                &#160;
+              </button>
+            </div>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #0000ff;"
+                title="Blue"
+              >
+                &#160;
+              </button>
+            </div>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #ff00ff;"
+                title="Magenta"
+              >
+                &#160;
+              </button>
+            </div>
+            <div class="btn-group" role="group">
+              <button
+                type="button"
+                class="btn btn-secondary btn-color"
+                style="background: #ffffff;"
+                title="White"
+              >
+                &#160;
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div id="colorTemplate" class="form-group">
+          <div class="form-group flex-grow-1 d-flex">
+            <label class="control-label"></label>
+            <input type="text" class="flex-grow-1 form-control minicolors" />
+          </div>
+          <div class="form-group d-flex">
+            <label class="control-label">Red</label>
+            <input
+              class="form-control color-red-input control-input"
+              type="number"
+              step="1"
+              min="0"
+              max="255"
+            />
+            <input
+              class="custom-range color-red-slider flex-grow-1 pl-3"
+              type="range"
+              step="1"
+              min="0"
+              max="255"
+            />
+          </div>
+          <div class="form-group d-flex">
+            <label class="control-label">Green</label>
+            <input
+              class="form-control color-green-input control-input"
+              type="number"
+              step="1"
+              min="0"
+              max="255"
+            />
+            <input
+              class="custom-range color-green-slider flex-grow-1 pl-3"
+              type="range"
+              step="1"
+              min="0"
+              max="255"
+            />
+          </div>
+          <div class="form-group d-flex">
+            <label class="control-label">Blue</label>
+            <input
+              class="form-control color-blue-input control-input"
+              type="number"
+              step="1"
+              min="0"
+              max="255"
+            />
+            <input
+              class="custom-range color-blue-slider flex-grow-1 pl-3"
+              type="range"
+              step="1"
+              min="0"
+              max="255"
+            />
+          </div>
+        </div>
+
+        <div
+          id="buttonsTemplateButton"
+          class="btn-group btn-group-lg"
+          role="group"
+        >
+          <button type="button" class="wordclock btn btn-secondary" value="0">
+            Text
+          </button>
+        </div>
+        <div id="buttonsTemplate" class="form-group">
+          <p></p>
+          <div
+            class="btn-group btn-group-lg btn-group-justified"
+            role="group"
+            aria-label="settings"
+          ></div>
+        </div>
+      </div>
+    </div>
+    <footer id="sticky-footer" class="pt-3 bg-secondary text-white-50">
+      <div class="container text-center">
+        <a href="/" aria-label="Refresh" title="Refresh">
+          <span class="glyphicon glyphicon-refresh" id="btnRefresh"></span>
+        </a>
+        <p id="status">Loading, please wait...</p>
+      </div>
+    </footer>
+
+    <script src="/js/config.js"></script>
+    <script src="/js/jquery-3.1.1.min.js"></script>
+    <script src="/js/bootstrap.min.js"></script>
+    <script src="/js/jquery.minicolors.min.js"></script>
+    <script src="/js/r-websocket.min.js"></script>
+    <script src="/js/app.js"></script>
+  </body>
+</html>
