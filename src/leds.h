@@ -44,7 +44,7 @@ CRGB backgroundColor = CRGB(0, 0, 0);
 CRGB foregroundColor = CRGB(255, 255, 255);
 CRGB lastForegroundColor = foregroundColor;
 
-void resetDots() { fill_solid(minuteLEDs, 16, CRGB(0, 0, 0)); }
+void resetDots() { fill_solid(minuteLEDs, 4, CRGB(0, 0, 0)); }
 void resetFront() { fill_solid(ledsFront[0], ledsFront.Size(), CRGB(0, 0, 0)); }
 void resetBack() { fill_solid(ledsBack[0], ledsBack.Size(), CRGB(0, 0, 0)); }
 
@@ -78,9 +78,8 @@ void blitLeds() {
 void drawDots(int dots, CRGB customColor = CRGB(0, 0, 0)) {
   CRGB color;
   String colorEffect = colorEffects[currentColorEffectIndex];
-  for (int dot = 0; dot < dots - 1; dot++) {
+  for (int dot = 0; dot < dots; dot++) {
     yield();
-    mHue += 20;
     if (customColor != CRGB(0, 0, 0)) {
       color = customColor;
     } else if (colorEffect == "Solid") {

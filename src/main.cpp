@@ -42,12 +42,20 @@
 #include <LEDMatrix.h>
 #include <WebSocketsServer.h>
 
+#include <BH1750.h> //https://github.com/claws/BH1750
+#include <Wire.h>
+
+#define I2C_SCL 22//SCL
+#define I2C_SDA 21//SDA
+
 #if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001008)
 #warning "Requires FastLED 3.1.8 or later; check github for latest code."
 #endif
 
 Button2 btn1(BUTTON_1);
 int btnPortal = false;
+
+BH1750 lightSensor;
 
 AsyncWebServer webServer(80);
 WebSocketsServer webSocketsServer = WebSocketsServer(81);
@@ -61,9 +69,13 @@ uint8_t power = 1;
 uint8_t lastPower = power;
 
 uint8_t brightness = 150;
+uint8_t lastBrightness = brightness;
 
 uint8_t daylightSaving = 0;
 uint8_t lastDaylightSaving = daylightSaving;
+
+uint8_t autoBrightness = 1;
+uint8_t lastAutoBrightness = autoBrightness;
 
 uint8_t tourette = 0;
 uint8_t lastTourette = tourette;
@@ -72,7 +84,7 @@ uint8_t timeMinute = 0;
 uint8_t timeHour = 0;
 CRGB minuteColor = CRGB::White;
 
-/*
+
 #define MATRIX_TILE_WIDTH   3 // width of EACH NEOPIXEL MATRIX (not total display)
 #define MATRIX_TILE_HEIGHT  3 // height of each matrix
 #define MATRIX_TILE_H       5  // number of matrices arranged horizontally
@@ -84,8 +96,10 @@ CRGB minuteColor = CRGB::White;
 #define NUM_LEDS            (MATRIX_WIDTH*MATRIX_HEIGHT)
 
 // create our matrix based on matrix definition
-cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V, HORIZONTAL_ZIGZAG_BLOCKS> leds;
-*/
+cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V, HORIZONTAL_BLOCKS> leds;
+cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V, HORIZONTAL_BLOCKS> ledsFront;
+cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V, HORIZONTAL_BLOCKS> ledsBack;
+
 
 static const int width = 15;
 static const int height = 15;
@@ -94,10 +108,7 @@ static const int size = (width * height);
 static const int numPixels = size;
 static const int maxDimension = ((width > height) ? width : height);
 
-cLEDMatrix<width, -height, matrixType> leds;
-cLEDMatrix<width, -height, matrixType> ledsFront;
-cLEDMatrix<width, -height, matrixType> ledsBack;
-CRGB minuteLEDs[16];
+CRGB minuteLEDs[4];
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
@@ -177,6 +188,59 @@ void FastLEDshowTask(void *pvParameters) {
   }
 }
 
+float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
+             float inputValue, float curve) {
+  float OriginalRange = 0;
+  float NewRange = 0;
+  float zeroRefCurVal = 0;
+  float normalizedCurVal = 0;
+  float rangedValue = 0;
+  bool invFlag = 0;
+  // condition curve parameter
+  // limit range
+  if (curve > 10) {
+    curve = 10;
+  }
+  if (curve < -10) {
+    curve = -10;
+  }
+  // - invert and scale - this seems more intuitive - postive
+  // numbers give more weight to high end on output
+  curve = (curve * -.1);
+  // convert linear scale into lograthimic exponent for
+  // other pow function
+  curve = pow(10, curve);
+  // Check for out of range inputValues
+  if (inputValue < originalMin) {
+    inputValue = originalMin;
+  }
+  if (inputValue > originalMax) {
+    inputValue = originalMax;
+  }
+  // Zero Refference the values
+  OriginalRange = originalMax - originalMin;
+  if (newEnd > newBegin) {
+    NewRange = newEnd - newBegin;
+  } else {
+    NewRange = newBegin - newEnd;
+    invFlag = 1;
+  }
+  zeroRefCurVal = inputValue - originalMin;
+  normalizedCurVal = zeroRefCurVal / OriginalRange; // normalize to 0 - 1 float
+  // Check for originalMin > originalMax  - the math for all other cases i.e.
+  // negative numbers seems to work out fine
+  if (originalMin > originalMax) {
+    return 0;
+  }
+  if (invFlag == 0) {
+    rangedValue = (pow(normalizedCurVal, curve) * NewRange) + newBegin;
+  } else {
+    // invert the ranges
+    rangedValue = newBegin - (pow(normalizedCurVal, curve) * NewRange);
+  }
+  return rangedValue;
+}
+
 void listDir(fs::FS &fs, const char *dirname, uint8_t levels) {
   Serial.printf("Listing directory: %s\n", dirname);
 
@@ -225,7 +289,7 @@ void nextTouretteMode() {
   if (tourette == 0) {
     return;
   }
-  if (cycleTouretteMode == 1 && (millis() > touretteModeTimeout)) {
+  if (cycleTouretteMode == 1 && (millis() > touretteCycleTimeout)) {
     // add one to the current mode number, and wrap around at the end
     if (randomTouretteMode) {
       currentTouretteModeIndex = random(touretteModeCount);
@@ -236,7 +300,7 @@ void nextTouretteMode() {
     String json = "{\"name\":\"touretteModes\",\"value\":\"" +
                   String(currentTouretteModeIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
-    touretteModeTimeout = millis() + (touretteModeDuration * 1000);
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
 }
 
@@ -244,7 +308,7 @@ void nextTouretteStart() {
   if (touretteModes[currentTouretteModeIndex] != "Start" || tourette == 0) {
     return;
   }
-  if (cycleTouretteStart == 1 && (millis() > touretteStartTimeout)) {
+  if (cycleTouretteStart == 1 && (millis() > touretteCycleTimeout)) {
     // add one to the current start word number, and wrap around at the end
     if (randomTouretteStart) {
       currentTouretteStartIndex = random(touretteStartWordCount);
@@ -255,7 +319,7 @@ void nextTouretteStart() {
     String json = "{\"name\":\"touretteStartWords\",\"value\":\"" +
                   String(currentTouretteStartIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
-    touretteStartTimeout = millis() + (touretteStartDuration * 1000);
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
 }
 
@@ -263,7 +327,7 @@ void nextTouretteMiddle() {
   if (tourette == 0) {
     return;
   }
-  if (cycleTouretteMiddle == 1 && (millis() > touretteMiddleTimeout)) {
+  if (cycleTouretteMiddle == 1 && (millis() > touretteCycleTimeout)) {
     // add one to the current middle word number, and wrap around at the end
     if (randomTouretteMiddle) {
       currentTouretteMiddleIndex = random(touretteMiddleWordCount);
@@ -274,7 +338,7 @@ void nextTouretteMiddle() {
     String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" +
                   String(currentTouretteMiddleIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
-    touretteMiddleTimeout = millis() + (touretteMiddleDuration * 1000);
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
 }
 
@@ -282,7 +346,7 @@ void nextTouretteEnd() {
   if (touretteModes[currentTouretteModeIndex] != "End" || tourette == 0) {
     return;
   }
-  if (cycleTouretteEnd == 1 && (millis() > touretteEndTimeout)) {
+  if (cycleTouretteEnd == 1 && (millis() > touretteCycleTimeout)) {
     // add one to the current end word number, and wrap around at the end
     if (randomTouretteEnd) {
       currentTouretteEndIndex = random(touretteEndWordCount);
@@ -293,7 +357,7 @@ void nextTouretteEnd() {
     String json = "{\"name\":\"touretteEndWords\",\"value\":\"" +
                   String(currentTouretteEndIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
-    touretteEndTimeout = millis() + (touretteEndDuration * 1000);
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
 }
 
@@ -321,12 +385,14 @@ void setup() {
   setupWifi();
   setupWeb();
 
-  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds[0], leds.Size())
-      .setCorrection(TypicalSMD5050);
-  FastLED.addLeds<CHIPSET, DATA_PIN_2, COLOR_ORDER>(minuteLEDs, 4)
-      .setCorrection(TypicalSMD5050);
+  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds[0], leds.Size()).setCorrection(TypicalSMD5050);
+  FastLED.addLeds<CHIPSET, DATA_PIN_2, COLOR_ORDER>(minuteLEDs, 4).setCorrection(TypicalSMD5050);
 
   FastLED.setMaxPowerInVoltsAndMilliamps(5, MILLI_AMPS);
+
+  Serial.println("initial I2C BH1750 light sensor");
+  Wire.begin(I2C_SDA, I2C_SCL);
+  lightSensor.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
 
   // set master brightness control
   FastLED.setBrightness(brightness);
@@ -530,13 +596,23 @@ void handleHours(uint8_t timeMin, uint8_t timeHrs) {
 
 void loop() {
   handleWeb();
-  // loopNTP();
 
   if (power == 0) {
     resetFront();
     resetBack();
-    // fill_solid(leds, NUM_LEDS, CRGB::Black);
   } else {
+
+    if (autoBrightness) {
+      EVERY_N_MILLISECONDS(5000) {
+        uint16_t lux = lightSensor.readLightLevel();
+        Serial.print("lux: ");
+        Serial.print(lux);
+        Serial.print(" lux log: ");
+        brightness = fscale(0, 3000, 20, 255, lux, 5);
+        Serial.println(brightness);
+        FastLED.setBrightness(brightness);
+      }
+    }
 
     // Call the current pattern function once, updating the 'leds' array
     backgrounds[currentBackgroundIndex].background();

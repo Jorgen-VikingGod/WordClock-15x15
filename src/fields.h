@@ -47,6 +47,20 @@ String setDaylightSaving(String value) {
   return String(daylightSaving);
 }
 
+String getAutoBrightness() { return String(autoBrightness); }
+
+String setAutoBrightness(String value) {
+  autoBrightness = value.toInt();
+  autoBrightness = autoBrightness == 0 ? 0 : 1;
+  if (autoBrightness) {
+    lastBrightness = brightness;
+  } else {
+    brightness = lastBrightness;
+    FastLED.setBrightness(brightness);
+  }
+  return String(autoBrightness);
+}
+
 String getForegroundColor() {
   return String(foregroundColor.r) + "," + String(foregroundColor.g) + "," +
          String(foregroundColor.b);
@@ -271,20 +285,20 @@ String getCycleTouretteMode() { return String(cycleTouretteMode); }
 String setCycleTouretteMode(String value) {
   cycleTouretteMode = value.toInt();
   cycleTouretteMode = cycleTouretteMode == 0 ? 0 : 1;
-  touretteModeTimeout = millis() + (touretteModeDuration * 1000);
+  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   return String(cycleTouretteMode);
 }
 
-String getTouretteModeDuration() { return String(touretteModeDuration); }
+String getTouretteCycleDuration() { return String(touretteCycleDuration); }
 
-String setTouretteModeDuration(String value) {
-  touretteModeDuration = value.toInt();
-  if (touretteModeDuration < 1)
-    touretteModeDuration = 1;
-  else if (touretteModeDuration > 255)
-    touretteModeDuration = 255;
-  touretteModeTimeout = millis() + (touretteModeDuration * 1000);
-  return String(touretteModeDuration);
+String setTouretteCycleDuration(String value) {
+  touretteCycleDuration = value.toInt();
+  if (touretteCycleDuration < 1)
+    touretteCycleDuration = 1;
+  else if (touretteCycleDuration > 255)
+    touretteCycleDuration = 255;
+  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+  return String(touretteCycleDuration);
 }
 
 String getTouretteStartWord() { return String(currentTouretteStartIndex); }
@@ -323,20 +337,8 @@ String getCycleTouretteStart() { return String(cycleTouretteStart); }
 String setCycleTouretteStart(String value) {
   cycleTouretteStart = value.toInt();
   cycleTouretteStart = cycleTouretteStart == 0 ? 0 : 1;
-  touretteStartTimeout = millis() + (touretteStartDuration * 1000);
+  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   return String(cycleTouretteStart);
-}
-
-String getTouretteStartDuration() { return String(touretteStartDuration); }
-
-String setTouretteStartDuration(String value) {
-  touretteStartDuration = value.toInt();
-  if (touretteStartDuration < 1)
-    touretteStartDuration = 1;
-  else if (touretteStartDuration > 255)
-    touretteStartDuration = 255;
-  touretteStartTimeout = millis() + (touretteStartDuration * 1000);
-  return String(touretteStartDuration);
 }
 
 String getTouretteMiddleWord() { return String(currentTouretteMiddleIndex); }
@@ -377,20 +379,8 @@ String getCycleTouretteMiddle() { return String(cycleTouretteMiddle); }
 String setCycleTouretteMiddle(String value) {
   cycleTouretteMiddle = value.toInt();
   cycleTouretteMiddle = cycleTouretteMiddle == 0 ? 0 : 1;
-  touretteMiddleTimeout = millis() + (touretteMiddleDuration * 1000);
+  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   return String(cycleTouretteMiddle);
-}
-
-String getTouretteMiddleDuration() { return String(touretteMiddleDuration); }
-
-String setTouretteMiddleDuration(String value) {
-  touretteMiddleDuration = value.toInt();
-  if (touretteMiddleDuration < 1)
-    touretteMiddleDuration = 1;
-  else if (touretteMiddleDuration > 255)
-    touretteMiddleDuration = 255;
-  touretteMiddleTimeout = millis() + (touretteMiddleDuration * 1000);
-  return String(touretteMiddleDuration);
 }
 
 String getTouretteEndWord() { return String(currentTouretteEndIndex); }
@@ -431,29 +421,17 @@ String getCycleTouretteEnd() { return String(cycleTouretteEnd); }
 String setCycleTouretteEnd(String value) {
   cycleTouretteEnd = value.toInt();
   cycleTouretteEnd = cycleTouretteEnd == 0 ? 0 : 1;
-  touretteEndTimeout = millis() + (touretteEndDuration * 1000);
+  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   return String(cycleTouretteEnd);
 }
 
-String getTouretteEndDuration() { return String(touretteEndDuration); }
-
-String setTouretteEndDuration(String value) {
-  touretteEndDuration = value.toInt();
-  if (touretteEndDuration < 1)
-    touretteEndDuration = 1;
-  else if (touretteEndDuration > 255)
-    touretteEndDuration = 255;
-  touretteEndTimeout = millis() + (touretteEndDuration * 1000);
-  return String(touretteEndDuration);
-}
-
-const SectionField sectionGlobal{"Global", "col-sm-12", "bg-light"};
+const SectionField sectionGlobal{"Global", "col-sm-12", "shadow-sm"};
 const SectionField sectionForeground{"Foreground", "col-xl-4 col-lg-6",
-                                     "border-info"};
+                                     "border-primary shadow-sm"};
 const SectionField sectionBackground{"Background", "col-xl-4 col-lg-6",
-                                     "border-primary"};
+                                     "border-success shadow-sm"};
 const SectionField sectionTourette{"Tourette", "col-xl-4 col-lg-6",
-                                   "border-warning"};
+                                   "border-secondary shadow-sm"};
 
 FieldList fields = {
     {sectionGlobal, "power", "Power", BooleanFieldType, 0, 1, getPower, NULL,
@@ -462,6 +440,8 @@ FieldList fields = {
      NULL, setTourette},
     {sectionGlobal, "daylight", "Daylight Saving", BooleanFieldType, 0, 1,
      getDaylightSaving, NULL, setDaylightSaving},
+    {sectionGlobal, "autoBrightness", "Auto Brightness", BooleanFieldType, 0, 1,
+     getAutoBrightness, NULL, setAutoBrightness},
     {sectionGlobal, "brightness", "Brightness", NumberFieldType, 1, 255,
      getBrightness, NULL, setBrightness},
 
@@ -498,8 +478,8 @@ FieldList fields = {
      1, getRandomTouretteMode, NULL, setRandomTouretteMode},
     {sectionTourette, "cycleTouretteMode", "Cycle Mode", BooleanFieldType, 0, 1,
      getCycleTouretteMode, NULL, setCycleTouretteMode},
-    {sectionTourette, "touretteModeDuration", "Mode Duration", NumberFieldType,
-     1, 255, getTouretteModeDuration, NULL, setTouretteModeDuration},
+    {sectionTourette, "touretteCycleDuration", "Cycle Duration", NumberFieldType,
+     1, 255, getTouretteCycleDuration, NULL, setTouretteCycleDuration},
 
     {sectionTourette, "touretteStartWords", "Start Word", SelectFieldType, 0,
      touretteStartWordCount, getTouretteStartWord, getTouretteStartWords,
@@ -508,10 +488,7 @@ FieldList fields = {
      0, 1, getRandomTouretteStart, NULL, setRandomTouretteStart},
     {sectionTourette, "cycleTouretteStart", "Cycle Start", BooleanFieldType, 0,
      1, getCycleTouretteStart, NULL, setCycleTouretteStart},
-    {sectionTourette, "touretteStartDuration", "Start Duration",
-     NumberFieldType, 1, 255, getTouretteStartDuration, NULL,
-     setTouretteStartDuration},
-
+    
     {sectionTourette, "touretteMiddleWords", "Middle Word", SelectFieldType, 0,
      touretteMiddleWordCount, getTouretteMiddleWord, getTouretteMiddleWords,
      setTouretteMiddleWord},
@@ -519,10 +496,7 @@ FieldList fields = {
      0, 1, getRandomTouretteMiddle, NULL, setRandomTouretteMiddle},
     {sectionTourette, "cycleTouretteMiddle", "Cycle Middle", BooleanFieldType,
      0, 1, getCycleTouretteMiddle, NULL, setCycleTouretteMiddle},
-    {sectionTourette, "touretteMiddleDuration", "Middle Duration",
-     NumberFieldType, 1, 255, getTouretteMiddleDuration, NULL,
-     setTouretteMiddleDuration},
-
+    
     {sectionTourette, "touretteEndWords", "End Word", SelectFieldType, 0,
      touretteEndWordCount, getTouretteEndWord, getTouretteEndWords,
      setTouretteEndWord},
@@ -530,8 +504,6 @@ FieldList fields = {
      getRandomTouretteEnd, NULL, setRandomTouretteEnd},
     {sectionTourette, "cycleTouretteEnd", "Cycle End", BooleanFieldType, 0, 1,
      getCycleTouretteEnd, NULL, setCycleTouretteEnd},
-    {sectionTourette, "touretteEndDuration", "End Duration", NumberFieldType, 1,
-     255, getTouretteEndDuration, NULL, setTouretteEndDuration},
 };
 
 uint8_t fieldCount = ARRAY_SIZE(fields);

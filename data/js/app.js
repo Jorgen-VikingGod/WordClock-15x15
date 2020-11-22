@@ -158,8 +158,8 @@ function addBooleanField(sectionId, field) {
   btnOn.attr('id', 'btnOn' + field.name);
   btnOff.attr('id', 'btnOff' + field.name);
 
-  btnOn.attr('class', field.value ? 'btn btn-primary' : 'btn btn-secondary');
-  btnOff.attr('class', !field.value ? 'btn btn-primary' : 'btn btn-secondary');
+  btnOn.attr('class', field.value ? 'btn btn-primary' : 'btn');
+  btnOff.attr('class', !field.value ? 'btn btn-primary' : 'btn');
 
   btnOn.click(function () {
     setBooleanFieldValue(field, btnOn, btnOff, 1);
@@ -621,8 +621,8 @@ function updateFieldValue(name, value) {
       var btnOn = group.find('#btnOn' + name);
       var btnOff = group.find('#btnOff' + name);
 
-      btnOn.attr('class', value ? 'btn btn-primary' : 'btn btn-secondary');
-      btnOff.attr('class', !value ? 'btn btn-primary' : 'btn btn-secondary');
+      btnOn.attr('class', value ? 'btn btn-primary' : 'btn');
+      btnOff.attr('class', !value ? 'btn btn-primary' : 'btn');
       if (name.toLowerCase() === 'tourette') {
         toggleTourette(name, value);
       }
@@ -650,8 +650,8 @@ function updateFieldValue(name, value) {
 function setBooleanFieldValue(field, btnOn, btnOff, value) {
   field.value = value;
 
-  btnOn.attr('class', field.value ? 'btn btn-primary' : 'btn btn-secondary');
-  btnOff.attr('class', !field.value ? 'btn btn-primary' : 'btn btn-secondary');
+  btnOn.attr('class', field.value ? 'btn btn-primary' : 'btn');
+  btnOff.attr('class', !field.value ? 'btn btn-primary' : 'btn');
   postValue(field.name, field.value);
 }
 
