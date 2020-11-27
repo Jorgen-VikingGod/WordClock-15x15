@@ -26,85 +26,137 @@
 String getPower() { return String(power); }
 
 String setPower(String value) {
-  power = value.toInt();
-  power = power == 0 ? 0 : 1;
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (power != newValue) {
+    power = newValue;
+    if (power == 0) {
+      lastMode = mode;
+      mode = MODE_RESET;
+    } else {
+      mode = lastMode;
+      if (mode == MODE_TIME) timeMode = TIME_UPDATE;
+    }
+  }
   return String(power);
-}
-
-String getTourette() { return String(tourette); }
-
-String setTourette(String value) {
-  tourette = value.toInt();
-  tourette = tourette == 0 ? 0 : 1;
-  return String(tourette);
 }
 
 String getDaylightSaving() { return String(daylightSaving); }
 
 String setDaylightSaving(String value) {
-  daylightSaving = value.toInt();
-  daylightSaving = daylightSaving == 0 ? 0 : 1;
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (daylightSaving != newValue) {
+    daylightSaving = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(daylightSaving);
 }
 
-String getAutoBrightness() { return String(autoBrightness); }
+String getMode() { return String(currentModeIndex); }
 
-String setAutoBrightness(String value) {
-  autoBrightness = value.toInt();
-  autoBrightness = autoBrightness == 0 ? 0 : 1;
-  if (autoBrightness) {
-    lastBrightness = brightness;
-  } else {
-    brightness = lastBrightness;
-    FastLED.setBrightness(brightness);
+void setMode(uint8_t value) {
+  uint8_t newValue = value >= modeCount ? modeCount - 1 : value;
+  if (currentModeIndex != newValue) {
+    currentModeIndex = newValue;
+    mode = modes[currentModeIndex].value;
+    if (mode == MODE_TIME) timeMode = TIME_UPDATE;
   }
-  return String(autoBrightness);
+}
+
+String setMode(String value) {
+  setMode(value.toInt());
+  return String(currentModeIndex);
+}
+
+String getModes() {
+  String json = "";
+
+  for (uint8_t i = 0; i < modeCount; i++) {
+    json += "\"" + modes[i].name + "\"";
+    if (i < modeCount - 1) json += ",";
+  }
+
+  return json;
+}
+
+String getTourette() { return String(tourette); }
+
+String setTourette(String value) {
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (tourette != newValue) {
+    tourette = newValue;
+    timeMode = TIME_UPDATE;
+  }
+  return String(tourette);
 }
 
 String getForegroundColor() {
-  return String(foregroundColor.r) + "," + String(foregroundColor.g) + "," +
-         String(foregroundColor.b);
+  return String(foregroundColor.r) + "," + String(foregroundColor.g) + "," + String(foregroundColor.b);
 }
 
 String setForegroundColor(uint8_t r, uint8_t g, uint8_t b) {
-  foregroundColor = CRGB(r, g, b);
-
-  return "\"" + String(foregroundColor.r) + "," + String(foregroundColor.g) +
-         "," + String(foregroundColor.b) + "\"";
+  CRGB newValue = CRGB(r, g, b);
+  if (foregroundColor != newValue) {
+    foregroundColor = newValue;
+    timeMode = TIME_UPDATE;
+  }
+  return "\"" + String(foregroundColor.r) + "," + String(foregroundColor.g) + "," + String(foregroundColor.b) + "\"";
 }
 
-String setForegroundColor(CRGB color) {
-  return setForegroundColor(color.r, color.g, color.b);
-}
+String setForegroundColor(CRGB color) { return setForegroundColor(color.r, color.g, color.b); }
 
 String setForegroundColor(String value) {
   CRGB color = parseColor(value);
-
   return setForegroundColor(color);
 }
 
 String getBrightness() { return String(brightness); }
 
 String setBrightness(String value) {
-  brightness = value.toInt();
-  FastLED.setBrightness(brightness);
+  uint8_t newValue = value.toInt();
+  if (brightness != newValue) {
+    brightness = newValue;
+    FastLED.setBrightness(brightness);
+    timeMode = TIME_UPDATE;
+  }
   return String(brightness);
+}
+
+String getAutoBrightness() { return String(autoBrightness); }
+
+String setAutoBrightness(String value) {
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (autoBrightness != newValue) {
+    autoBrightness = newValue;
+    if (autoBrightness) {
+      lastBrightness = brightness;
+    } else {
+      brightness = lastBrightness;
+      FastLED.setBrightness(brightness);
+    }
+    timeMode = TIME_UPDATE;
+  }
+  return String(autoBrightness);
 }
 
 String getBackgroundBrightness() { return String(backgroundBrightness); }
 
 String setBackgroundBrightness(String value) {
-  backgroundBrightness = value.toInt();
+  uint8_t newValue = value.toInt();
+  if (backgroundBrightness != newValue) {
+    backgroundBrightness = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(backgroundBrightness);
 }
 
 String getBackground() { return String(currentBackgroundIndex); }
 
 void setBackground(uint8_t value) {
-  if (value >= backgroundCount)
-    value = backgroundCount - 1;
-
-  currentBackgroundIndex = value;
+  uint8_t newValue = value >= backgroundCount ? backgroundCount - 1 : value;
+  if (currentBackgroundIndex != newValue) {
+    currentBackgroundIndex = newValue;
+    timeMode = TIME_UPDATE;
+  }
 }
 
 String setBackground(String value) {
@@ -117,8 +169,7 @@ String getBackgrounds() {
 
   for (uint8_t i = 0; i < backgroundCount; i++) {
     json += "\"" + backgrounds[i].name + "\"";
-    if (i < backgroundCount - 1)
-      json += ",";
+    if (i < backgroundCount - 1) json += ",";
   }
 
   return json;
@@ -127,51 +178,50 @@ String getBackgrounds() {
 String getNoisePaletteSpeedX() { return String(noisePaletteSpeedX); }
 
 String setNoisePaletteSpeedX(String value) {
-  noisePaletteSpeedX = value.toInt();
-  if (noisePaletteSpeedX < 0)
-    noisePaletteSpeedX = 0;
-  else if (noisePaletteSpeedX > 24)
-    noisePaletteSpeedX = 24;
+  uint8_t newValue = constrain(value.toInt(), 0, 24);
+  if (noisePaletteSpeedX != newValue) {
+    noisePaletteSpeedX = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(noisePaletteSpeedX);
 }
 
 String getNoisePaletteSpeedY() { return String(noisePaletteSpeedY); }
 
 String setNoisePaletteSpeedY(String value) {
-  noisePaletteSpeedY = value.toInt();
-  if (noisePaletteSpeedY < 0)
-    noisePaletteSpeedY = 0;
-  else if (noisePaletteSpeedY > 24)
-    noisePaletteSpeedY = 24;
+  uint8_t newValue = constrain(value.toInt(), 0, 24);
+  if (noisePaletteSpeedY != newValue) {
+    noisePaletteSpeedY = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(noisePaletteSpeedY);
 }
 
 String getNoisePaletteSpeedZ() { return String(noisePaletteSpeedZ); }
 
 String setNoisePaletteSpeedZ(String value) {
-  noisePaletteSpeedZ = value.toInt();
-  if (noisePaletteSpeedZ < 0)
-    noisePaletteSpeedZ = 0;
-  else if (noisePaletteSpeedZ > 24)
-    noisePaletteSpeedZ = 24;
+  uint8_t newValue = constrain(value.toInt(), 0, 24);
+  if (noisePaletteSpeedZ != newValue) {
+    noisePaletteSpeedZ = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(noisePaletteSpeedZ);
 }
 
 String getBackgroundColor() {
-  return String(backgroundColor.r) + "," + String(backgroundColor.g) + "," +
-         String(backgroundColor.b);
+  return String(backgroundColor.r) + "," + String(backgroundColor.g) + "," + String(backgroundColor.b);
 }
 
 String setBackgroundColor(uint8_t r, uint8_t g, uint8_t b) {
-  backgroundColor = CRGB(r, g, b);
-
-  return "\"" + String(backgroundColor.r) + "," + String(backgroundColor.g) +
-         "," + String(backgroundColor.b) + "\"";
+  CRGB newValue = CRGB(r, g, b);
+  if (backgroundColor != newValue) {
+    backgroundColor = newValue;
+    timeMode = TIME_UPDATE;
+  }
+  return "\"" + String(backgroundColor.r) + "," + String(backgroundColor.g) + "," + String(backgroundColor.b) + "\"";
 }
 
-String setBackgroundColor(CRGB color) {
-  return setBackgroundColor(color.r, color.g, color.b);
-}
+String setBackgroundColor(CRGB color) { return setBackgroundColor(color.r, color.g, color.b); }
 
 String setBackgroundColor(String value) {
   CRGB color = parseColor(value);
@@ -182,11 +232,12 @@ String setBackgroundColor(String value) {
 String getPalette() { return String(currentPaletteIndex); }
 
 String setPalette(String value) {
-  currentPaletteIndex = value.toInt();
-  if (currentPaletteIndex < 0)
-    currentPaletteIndex = 0;
-  else if (currentPaletteIndex >= paletteCount)
-    currentPaletteIndex = paletteCount - 1;
+  uint8_t newValue = constrain(value.toInt(), 0, paletteCount);
+  if (newValue >= paletteCount) newValue = paletteCount - 1;
+  if (currentPaletteIndex != newValue) {
+    currentPaletteIndex = newValue;
+    timeMode = TIME_UPDATE;
+  }
   targetPalette = palettes[currentPaletteIndex];
   return String(currentPaletteIndex);
 }
@@ -196,8 +247,7 @@ String getPalettes() {
 
   for (uint8_t i = 0; i < paletteCount; i++) {
     json += "\"" + paletteNames[i] + "\"";
-    if (i < paletteCount - 1)
-      json += ",";
+    if (i < paletteCount - 1) json += ",";
   }
 
   return json;
@@ -206,30 +256,35 @@ String getPalettes() {
 String getCyclePalettes() { return String(cyclePalettes); }
 
 String setCyclePalettes(String value) {
-  cyclePalettes = value.toInt();
-  cyclePalettes = cyclePalettes == 0 ? 0 : 1;
-  paletteTimeout = millis() + (paletteDuration * 1000);
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (cyclePalettes != newValue) {
+    cyclePalettes = newValue;
+    paletteTimeout = millis() + (paletteDuration * 1000);
+    timeMode = TIME_UPDATE;
+  }
   return String(cyclePalettes);
 }
 
 String getPaletteDuration() { return String(paletteDuration); }
 
 String setPaletteDuration(String value) {
-  paletteDuration = value.toInt();
-  if (paletteDuration < 1)
-    paletteDuration = 1;
-  else if (paletteDuration > 255)
-    paletteDuration = 255;
-  paletteTimeout = millis() + (paletteDuration * 1000);
+  uint8_t newValue = constrain(value.toInt(), 1, 255);
+  if (paletteDuration != newValue) {
+    paletteDuration = newValue;
+    paletteTimeout = millis() + (paletteDuration * 1000);
+    timeMode = TIME_UPDATE;
+  }
   return String(paletteDuration);
 }
 
 String getColorEffect() { return String(currentColorEffectIndex); }
 
 void setColorEffect(uint8_t value) {
-  if (value >= colorEffectCount)
-    value = colorEffectCount - 1;
-  currentColorEffectIndex = value;
+  uint8_t newValue = value >= colorEffectCount ? colorEffectCount - 1 : value;
+  if (currentColorEffectIndex != newValue) {
+    currentColorEffectIndex = newValue;
+    timeMode = TIME_UPDATE;
+  }
 }
 
 String setColorEffect(String value) {
@@ -242,8 +297,7 @@ String getColorEffects() {
 
   for (uint8_t i = 0; i < colorEffectCount; i++) {
     json += "\"" + colorEffects[i] + "\"";
-    if (i < colorEffectCount - 1)
-      json += ",";
+    if (i < colorEffectCount - 1) json += ",";
   }
 
   return json;
@@ -252,9 +306,11 @@ String getColorEffects() {
 String getTouretteMode() { return String(currentTouretteModeIndex); }
 
 void setTouretteMode(uint8_t value) {
-  if (value >= touretteModeCount)
-    value = touretteModeCount - 1;
-  currentTouretteModeIndex = value;
+  uint8_t newValue = value >= touretteModeCount ? touretteModeCount - 1 : value;
+  if (currentTouretteModeIndex != newValue) {
+    currentTouretteModeIndex = newValue;
+    timeMode = TIME_UPDATE;
+  }
 }
 
 String setTouretteMode(String value) {
@@ -266,8 +322,7 @@ String getTouretteModes() {
   String json = "";
   for (uint8_t i = 0; i < touretteModeCount; i++) {
     json += "\"" + touretteModes[i] + "\"";
-    if (i < touretteModeCount - 1)
-      json += ",";
+    if (i < touretteModeCount - 1) json += ",";
   }
   return json;
 }
@@ -275,38 +330,46 @@ String getTouretteModes() {
 String getRandomTouretteMode() { return String(randomTouretteMode); }
 
 String setRandomTouretteMode(String value) {
-  randomTouretteMode = value.toInt();
-  randomTouretteMode = randomTouretteMode == 0 ? 0 : 1;
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (randomTouretteMode != newValue) {
+    randomTouretteMode = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(randomTouretteMode);
 }
 
 String getCycleTouretteMode() { return String(cycleTouretteMode); }
 
 String setCycleTouretteMode(String value) {
-  cycleTouretteMode = value.toInt();
-  cycleTouretteMode = cycleTouretteMode == 0 ? 0 : 1;
-  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (cycleTouretteMode != newValue) {
+    cycleTouretteMode = newValue;
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+    timeMode = TIME_UPDATE;
+  }
   return String(cycleTouretteMode);
 }
 
 String getTouretteCycleDuration() { return String(touretteCycleDuration); }
 
 String setTouretteCycleDuration(String value) {
-  touretteCycleDuration = value.toInt();
-  if (touretteCycleDuration < 1)
-    touretteCycleDuration = 1;
-  else if (touretteCycleDuration > 255)
-    touretteCycleDuration = 255;
-  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+  uint8_t newValue = constrain(value.toInt(), 1, 255);
+  if (touretteCycleDuration != newValue) {
+    touretteCycleDuration = newValue;
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+    timeMode = TIME_UPDATE;
+  }
   return String(touretteCycleDuration);
 }
 
 String getTouretteStartWord() { return String(currentTouretteStartIndex); }
 
 void setTouretteStartWord(uint8_t value) {
-  if (value >= touretteStartWordCount)
-    value = touretteStartWordCount - 1;
-  currentTouretteStartIndex = value;
+  uint8_t newValue = value >= touretteStartWordCount ? touretteStartWordCount - 1 : value;
+  if (currentTouretteStartIndex != newValue) {
+    currentTouretteStartIndex = newValue;
+    timeMode = TIME_UPDATE;
+  }
 }
 
 String setTouretteStartWord(String value) {
@@ -318,8 +381,7 @@ String getTouretteStartWords() {
   String json = "";
   for (uint8_t i = 0; i < touretteStartWordCount; i++) {
     json += "\"" + touretteStartWords[i].name + "\"";
-    if (i < touretteStartWordCount - 1)
-      json += ",";
+    if (i < touretteStartWordCount - 1) json += ",";
   }
   return json;
 }
@@ -327,26 +389,34 @@ String getTouretteStartWords() {
 String getRandomTouretteStart() { return String(randomTouretteStart); }
 
 String setRandomTouretteStart(String value) {
-  randomTouretteStart = value.toInt();
-  randomTouretteStart = randomTouretteStart == 0 ? 0 : 1;
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (randomTouretteStart != newValue) {
+    randomTouretteStart = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(randomTouretteStart);
 }
 
 String getCycleTouretteStart() { return String(cycleTouretteStart); }
 
 String setCycleTouretteStart(String value) {
-  cycleTouretteStart = value.toInt();
-  cycleTouretteStart = cycleTouretteStart == 0 ? 0 : 1;
-  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (cycleTouretteStart != newValue) {
+    cycleTouretteStart = newValue;
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+    timeMode = TIME_UPDATE;
+  }
   return String(cycleTouretteStart);
 }
 
 String getTouretteMiddleWord() { return String(currentTouretteMiddleIndex); }
 
 void setTouretteMiddleWord(uint8_t value) {
-  if (value >= touretteMiddleWordCount)
-    value = touretteMiddleWordCount - 1;
-  currentTouretteMiddleIndex = value;
+  uint8_t newValue = value >= touretteMiddleWordCount ? touretteMiddleWordCount - 1 : value;
+  if (currentTouretteMiddleIndex != newValue) {
+    currentTouretteMiddleIndex = newValue;
+    timeMode = TIME_UPDATE;
+  }
 }
 
 String setTouretteMiddleWord(String value) {
@@ -359,8 +429,7 @@ String getTouretteMiddleWords() {
 
   for (uint8_t i = 0; i < touretteMiddleWordCount; i++) {
     json += "\"" + touretteMiddleWords[i].name + "\"";
-    if (i < touretteMiddleWordCount - 1)
-      json += ",";
+    if (i < touretteMiddleWordCount - 1) json += ",";
   }
 
   return json;
@@ -369,26 +438,34 @@ String getTouretteMiddleWords() {
 String getRandomTouretteMiddle() { return String(randomTouretteMiddle); }
 
 String setRandomTouretteMiddle(String value) {
-  randomTouretteMiddle = value.toInt();
-  randomTouretteMiddle = randomTouretteMiddle == 0 ? 0 : 1;
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (randomTouretteMiddle != newValue) {
+    randomTouretteMiddle = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(randomTouretteMiddle);
 }
 
 String getCycleTouretteMiddle() { return String(cycleTouretteMiddle); }
 
 String setCycleTouretteMiddle(String value) {
-  cycleTouretteMiddle = value.toInt();
-  cycleTouretteMiddle = cycleTouretteMiddle == 0 ? 0 : 1;
-  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (cycleTouretteMiddle != newValue) {
+    cycleTouretteMiddle = newValue;
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+    timeMode = TIME_UPDATE;
+  }
   return String(cycleTouretteMiddle);
 }
 
 String getTouretteEndWord() { return String(currentTouretteEndIndex); }
 
 void setTouretteEndWord(uint8_t value) {
-  if (value >= touretteEndWordCount)
-    value = touretteEndWordCount - 1;
-  currentTouretteEndIndex = value;
+  uint8_t newValue = value >= touretteEndWordCount ? touretteEndWordCount - 1 : value;
+  if (currentTouretteEndIndex != newValue) {
+    currentTouretteEndIndex = newValue;
+    timeMode = TIME_UPDATE;
+  }
 }
 
 String setTouretteEndWord(String value) {
@@ -401,8 +478,7 @@ String getTouretteEndWords() {
 
   for (uint8_t i = 0; i < touretteEndWordCount; i++) {
     json += "\"" + touretteEndWords[i].name + "\"";
-    if (i < touretteEndWordCount - 1)
-      json += ",";
+    if (i < touretteEndWordCount - 1) json += ",";
   }
 
   return json;
@@ -411,99 +487,94 @@ String getTouretteEndWords() {
 String getRandomTouretteEnd() { return String(randomTouretteEnd); }
 
 String setRandomTouretteEnd(String value) {
-  randomTouretteEnd = value.toInt();
-  randomTouretteEnd = randomTouretteEnd == 0 ? 0 : 1;
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (randomTouretteEnd != newValue) {
+    randomTouretteEnd = newValue;
+    timeMode = TIME_UPDATE;
+  }
   return String(randomTouretteEnd);
 }
 
 String getCycleTouretteEnd() { return String(cycleTouretteEnd); }
 
 String setCycleTouretteEnd(String value) {
-  cycleTouretteEnd = value.toInt();
-  cycleTouretteEnd = cycleTouretteEnd == 0 ? 0 : 1;
-  touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+  uint8_t newValue = value.toInt() == 0 ? 0 : 1;
+  if (cycleTouretteEnd != newValue) {
+    cycleTouretteEnd = newValue;
+    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
+    timeMode = TIME_UPDATE;
+  }
   return String(cycleTouretteEnd);
 }
 
 const SectionField sectionGlobal{"Global", "col-sm-12", "shadow-sm"};
-const SectionField sectionForeground{"Foreground", "col-xl-4 col-lg-6",
-                                     "border-primary shadow-sm"};
-const SectionField sectionBackground{"Background", "col-xl-4 col-lg-6",
-                                     "border-success shadow-sm"};
-const SectionField sectionTourette{"Tourette", "col-xl-4 col-lg-6",
-                                   "border-secondary shadow-sm"};
+const SectionField sectionForeground{"Foreground", "col-xl-4 col-lg-6", "border-primary shadow-sm"};
+const SectionField sectionBackground{"Background", "col-xl-4 col-lg-6", "border-success shadow-sm"};
+const SectionField sectionTourette{"Tourette", "col-xl-4 col-lg-6", "border-secondary shadow-sm"};
 
 FieldList fields = {
-    {sectionGlobal, "power", "Power", BooleanFieldType, 0, 1, getPower, NULL,
-     setPower},
-    {sectionGlobal, "tourette", "Tourette", BooleanFieldType, 0, 1, getTourette,
-     NULL, setTourette},
-    {sectionGlobal, "daylight", "Daylight Saving", BooleanFieldType, 0, 1,
-     getDaylightSaving, NULL, setDaylightSaving},
-    {sectionGlobal, "autoBrightness", "Auto Brightness", BooleanFieldType, 0, 1,
-     getAutoBrightness, NULL, setAutoBrightness},
-    {sectionGlobal, "brightness", "Brightness", NumberFieldType, 1, 255,
-     getBrightness, NULL, setBrightness},
+    {sectionGlobal, "power", "Power", BooleanFieldType, 0, 1, getPower, NULL, setPower},
+    {sectionGlobal, "tourette", "Tourette", BooleanFieldType, 0, 1, getTourette, NULL, setTourette},
+    {sectionGlobal, "daylight", "Daylight Saving", BooleanFieldType, 0, 1, getDaylightSaving, NULL, setDaylightSaving},
+    {sectionGlobal, "autoBrightness", "Auto Brightness", BooleanFieldType, 0, 1, getAutoBrightness, NULL,
+     setAutoBrightness},
+    {sectionGlobal, "brightness", "Brightness", NumberFieldType, 1, 255, getBrightness, NULL, setBrightness},
 
-    {sectionForeground, "colorEffect", "Color Effect", SelectFieldType, 0,
-     colorEffectCount, getColorEffect, getColorEffects, setColorEffect},
-    {sectionForeground, "foregroundColor", "Color", ColorFieldType, 0, 255,
-     getForegroundColor, NULL, setForegroundColor},
+    {sectionForeground, "colorEffect", "Color Effect", SelectFieldType, 0, colorEffectCount, getColorEffect,
+     getColorEffects, setColorEffect},
+    {sectionForeground, "foregroundColor", "Color", ColorFieldType, 0, 255, getForegroundColor, NULL,
+     setForegroundColor},
 
-    {sectionBackground, "background", "Background", SelectFieldType, 0,
-     backgroundCount, getBackground, getBackgrounds, setBackground},
-    {sectionBackground, "backgroundBrightness", "Brightness", NumberFieldType,
-     1, 255, getBackgroundBrightness, NULL, setBackgroundBrightness},
+    {sectionBackground, "background", "Background", SelectFieldType, 0, backgroundCount, getBackground, getBackgrounds,
+     setBackground},
+    {sectionBackground, "backgroundBrightness", "Brightness", NumberFieldType, 1, 255, getBackgroundBrightness, NULL,
+     setBackgroundBrightness},
 
-    {sectionBackground, "noisePaletteSpeedX", "Speed X", NumberFieldType, 0, 24,
-     getNoisePaletteSpeedX, NULL, setNoisePaletteSpeedX},
-    {sectionBackground, "noisePaletteSpeedY", "Speed Y", NumberFieldType, 0, 24,
-     getNoisePaletteSpeedY, NULL, setNoisePaletteSpeedY},
-    {sectionBackground, "noisePaletteSpeedZ", "Speed Z", NumberFieldType, 0, 24,
-     getNoisePaletteSpeedZ, NULL, setNoisePaletteSpeedZ},
+    {sectionBackground, "noisePaletteSpeedX", "Speed X", NumberFieldType, 0, 24, getNoisePaletteSpeedX, NULL,
+     setNoisePaletteSpeedX},
+    {sectionBackground, "noisePaletteSpeedY", "Speed Y", NumberFieldType, 0, 24, getNoisePaletteSpeedY, NULL,
+     setNoisePaletteSpeedY},
+    {sectionBackground, "noisePaletteSpeedZ", "Speed Z", NumberFieldType, 0, 24, getNoisePaletteSpeedZ, NULL,
+     setNoisePaletteSpeedZ},
 
-    {sectionBackground, "backgroundColor", "Color", ColorFieldType, 0, 255,
-     getBackgroundColor, NULL, setBackgroundColor},
+    {sectionBackground, "backgroundColor", "Color", ColorFieldType, 0, 255, getBackgroundColor, NULL,
+     setBackgroundColor},
 
-    {sectionBackground, "palette", "Palette", SelectFieldType, 0, paletteCount,
-     getPalette, getPalettes, setPalette},
-    {sectionBackground, "cyclePalettes", "Cycle Palettes", BooleanFieldType, 0,
-     1, getCyclePalettes, NULL, setCyclePalettes},
-    {sectionBackground, "paletteDuration", "Palette Duration", NumberFieldType,
-     1, 255, getPaletteDuration, NULL, setPaletteDuration},
+    {sectionBackground, "palette", "Palette", SelectFieldType, 0, paletteCount, getPalette, getPalettes, setPalette},
+    {sectionBackground, "cyclePalettes", "Cycle Palettes", BooleanFieldType, 0, 1, getCyclePalettes, NULL,
+     setCyclePalettes},
+    {sectionBackground, "paletteDuration", "Palette Duration", NumberFieldType, 1, 255, getPaletteDuration, NULL,
+     setPaletteDuration},
 
-    {sectionTourette, "touretteModes", "Tourette Mode", SelectFieldType, 0,
-     touretteModeCount, getTouretteMode, getTouretteModes, setTouretteMode},
-    {sectionTourette, "randomTouretteMode", "Random Cycle", BooleanFieldType, 0,
-     1, getRandomTouretteMode, NULL, setRandomTouretteMode},
-    {sectionTourette, "cycleTouretteMode", "Cycle Mode", BooleanFieldType, 0, 1,
-     getCycleTouretteMode, NULL, setCycleTouretteMode},
-    {sectionTourette, "touretteCycleDuration", "Cycle Duration", NumberFieldType,
-     1, 255, getTouretteCycleDuration, NULL, setTouretteCycleDuration},
+    {sectionTourette, "touretteModes", "Tourette Mode", SelectFieldType, 0, touretteModeCount, getTouretteMode,
+     getTouretteModes, setTouretteMode},
+    {sectionTourette, "randomTouretteMode", "Random Cycle", BooleanFieldType, 0, 1, getRandomTouretteMode, NULL,
+     setRandomTouretteMode},
+    {sectionTourette, "cycleTouretteMode", "Cycle Mode", BooleanFieldType, 0, 1, getCycleTouretteMode, NULL,
+     setCycleTouretteMode},
+    {sectionTourette, "touretteCycleDuration", "Cycle Duration", NumberFieldType, 1, 255, getTouretteCycleDuration,
+     NULL, setTouretteCycleDuration},
 
-    {sectionTourette, "touretteStartWords", "Start Word", SelectFieldType, 0,
-     touretteStartWordCount, getTouretteStartWord, getTouretteStartWords,
-     setTouretteStartWord},
-    {sectionTourette, "randomTouretteStart", "Random Start", BooleanFieldType,
-     0, 1, getRandomTouretteStart, NULL, setRandomTouretteStart},
-    {sectionTourette, "cycleTouretteStart", "Cycle Start", BooleanFieldType, 0,
-     1, getCycleTouretteStart, NULL, setCycleTouretteStart},
-    
-    {sectionTourette, "touretteMiddleWords", "Middle Word", SelectFieldType, 0,
-     touretteMiddleWordCount, getTouretteMiddleWord, getTouretteMiddleWords,
-     setTouretteMiddleWord},
-    {sectionTourette, "randomTouretteMiddle", "Random Middle", BooleanFieldType,
-     0, 1, getRandomTouretteMiddle, NULL, setRandomTouretteMiddle},
-    {sectionTourette, "cycleTouretteMiddle", "Cycle Middle", BooleanFieldType,
-     0, 1, getCycleTouretteMiddle, NULL, setCycleTouretteMiddle},
-    
-    {sectionTourette, "touretteEndWords", "End Word", SelectFieldType, 0,
-     touretteEndWordCount, getTouretteEndWord, getTouretteEndWords,
-     setTouretteEndWord},
-    {sectionTourette, "randomTouretteEnd", "Random End", BooleanFieldType, 0, 1,
-     getRandomTouretteEnd, NULL, setRandomTouretteEnd},
-    {sectionTourette, "cycleTouretteEnd", "Cycle End", BooleanFieldType, 0, 1,
-     getCycleTouretteEnd, NULL, setCycleTouretteEnd},
+    {sectionTourette, "touretteStartWords", "Start Word", SelectFieldType, 0, touretteStartWordCount,
+     getTouretteStartWord, getTouretteStartWords, setTouretteStartWord},
+    {sectionTourette, "randomTouretteStart", "Random Start", BooleanFieldType, 0, 1, getRandomTouretteStart, NULL,
+     setRandomTouretteStart},
+    {sectionTourette, "cycleTouretteStart", "Cycle Start", BooleanFieldType, 0, 1, getCycleTouretteStart, NULL,
+     setCycleTouretteStart},
+
+    {sectionTourette, "touretteMiddleWords", "Middle Word", SelectFieldType, 0, touretteMiddleWordCount,
+     getTouretteMiddleWord, getTouretteMiddleWords, setTouretteMiddleWord},
+    {sectionTourette, "randomTouretteMiddle", "Random Middle", BooleanFieldType, 0, 1, getRandomTouretteMiddle, NULL,
+     setRandomTouretteMiddle},
+    {sectionTourette, "cycleTouretteMiddle", "Cycle Middle", BooleanFieldType, 0, 1, getCycleTouretteMiddle, NULL,
+     setCycleTouretteMiddle},
+
+    {sectionTourette, "touretteEndWords", "End Word", SelectFieldType, 0, touretteEndWordCount, getTouretteEndWord,
+     getTouretteEndWords, setTouretteEndWord},
+    {sectionTourette, "randomTouretteEnd", "Random End", BooleanFieldType, 0, 1, getRandomTouretteEnd, NULL,
+     setRandomTouretteEnd},
+    {sectionTourette, "cycleTouretteEnd", "Cycle End", BooleanFieldType, 0, 1, getCycleTouretteEnd, NULL,
+     setCycleTouretteEnd},
 };
 
 uint8_t fieldCount = ARRAY_SIZE(fields);

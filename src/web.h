@@ -30,41 +30,39 @@
 
 uint8_t connectTry = 0;
 
-NTPClient ntpClient("de.pool.ntp.org", 3600); // 3600);
+NTPClient ntpClient("de.pool.ntp.org", 3600);  // 3600);
 
-void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload,
-                    size_t length) {
+void webSocketEvent(uint8_t num, WStype_t type, uint8_t *payload, size_t length) {
   switch (type) {
-  case WStype_DISCONNECTED:
-    Serial.printf("[%u] Disconnected!\n", num);
-    break;
+    case WStype_DISCONNECTED:
+      Serial.printf("[%u] Disconnected!\n", num);
+      break;
 
-  case WStype_CONNECTED: {
-    IPAddress ip = webSocketsServer.remoteIP(num);
-    Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0],
-                  ip[1], ip[2], ip[3], payload);
+    case WStype_CONNECTED: {
+      IPAddress ip = webSocketsServer.remoteIP(num);
+      Serial.printf("[%u] Connected from %d.%d.%d.%d url: %s\n", num, ip[0], ip[1], ip[2], ip[3], payload);
 
-    // send message to client
-    // webSocketsServer.sendTXT(num, "Connected");
-  } break;
+      // send message to client
+      // webSocketsServer.sendTXT(num, "Connected");
+    } break;
 
-  case WStype_TEXT:
-    Serial.printf("[%u] get Text: %s\n", num, payload);
+    case WStype_TEXT:
+      Serial.printf("[%u] get Text: %s\n", num, payload);
 
-    // send message to client
-    // webSocketsServer.sendTXT(num, "message here");
+      // send message to client
+      // webSocketsServer.sendTXT(num, "message here");
 
-    // send data to all connected clients
-    // webSocketsServer.broadcastTXT("someone else connected");
-    break;
+      // send data to all connected clients
+      // webSocketsServer.broadcastTXT("someone else connected");
+      break;
 
-  case WStype_BIN:
-    Serial.printf("[%u] get binary length: %u\n", num, length);
-    //  hexdump(payload, length);
+    case WStype_BIN:
+      Serial.printf("[%u] get binary length: %u\n", num, length);
+      //  hexdump(payload, length);
 
-    // send message to client
-    // webSocketsServer.sendBIN(num, payload, lenght);
-    break;
+      // send message to client
+      // webSocketsServer.sendBIN(num, payload, lenght);
+      break;
   }
 }
 
@@ -76,7 +74,7 @@ void setupWeb() {
     digitalWrite(LED_BUILTIN, LOW);
   });
 
-  webServer.on("/fieldValue", HTTP_GET, [](AsyncWebServerRequest *request) {
+  webServer.on("/get", HTTP_GET, [](AsyncWebServerRequest *request) {
     digitalWrite(LED_BUILTIN, HIGH);
     String name = request->getParam("name")->value();
     String value = getFieldValue(name, fields, fieldCount);
@@ -84,19 +82,19 @@ void setupWeb() {
     digitalWrite(LED_BUILTIN, LOW);
   });
 
-  webServer.on("/fieldValue", HTTP_POST, [](AsyncWebServerRequest *request) {
+  webServer.on("/set", HTTP_GET, [](AsyncWebServerRequest *request) {
     digitalWrite(LED_BUILTIN, HIGH);
-    String name = request->getParam("name", true)->value();
+    String name = request->getParam("name")->value();
 
     Field field = getField(name, fields, fieldCount);
     String value;
     if (field.type == ColorFieldType) {
-      String r = request->getParam("r", true)->value();
-      String g = request->getParam("g", true)->value();
-      String b = request->getParam("b", true)->value();
+      String r = request->getParam("r")->value();
+      String g = request->getParam("g")->value();
+      String b = request->getParam("b")->value();
       value = r + "," + g + "," + b;
     } else {
-      value = request->getParam("value", true)->value();
+      value = request->getParam("value")->value();
     }
 
     String newValue = setFieldValue(name, value, fields, fieldCount);
@@ -125,8 +123,7 @@ void setupWeb() {
       Serial.printf("OPTIONS");
     else
       Serial.printf("UNKNOWN");
-    Serial.printf(" http://%s%s\n", request->host().c_str(),
-                  request->url().c_str());
+    Serial.printf(" http://%s%s\n", request->host().c_str(), request->url().c_str());
 
     if (request->contentLength()) {
       Serial.printf("_CONTENT_TYPE: %s\n", request->contentType().c_str());
@@ -144,8 +141,7 @@ void setupWeb() {
     for (i = 0; i < params; i++) {
       AsyncWebParameter *p = request->getParam(i);
       if (p->isFile()) {
-        Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(),
-                      p->value().c_str(), p->size());
+        Serial.printf("_FILE[%s]: %s, size: %u\n", p->name().c_str(), p->value().c_str(), p->size());
       } else if (p->isPost()) {
         Serial.printf("_POST[%s]: %s\n", p->name().c_str(), p->value().c_str());
       } else {
@@ -155,22 +151,16 @@ void setupWeb() {
 
     request->send(404);
   });
-  webServer.onFileUpload([](AsyncWebServerRequest *request,
-                            const String &filename, size_t index, uint8_t *data,
-                            size_t len, bool final) {
-    if (!index)
-      Serial.printf("UploadStart: %s\n", filename.c_str());
+  webServer.onFileUpload(
+      [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final) {
+        if (!index) Serial.printf("UploadStart: %s\n", filename.c_str());
+        Serial.printf("%s", (const char *)data);
+        if (final) Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index + len);
+      });
+  webServer.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+    if (!index) Serial.printf("BodyStart: %u\n", total);
     Serial.printf("%s", (const char *)data);
-    if (final)
-      Serial.printf("UploadEnd: %s (%u)\n", filename.c_str(), index + len);
-  });
-  webServer.onRequestBody([](AsyncWebServerRequest *request, uint8_t *data,
-                             size_t len, size_t index, size_t total) {
-    if (!index)
-      Serial.printf("BodyStart: %u\n", total);
-    Serial.printf("%s", (const char *)data);
-    if (index + len == total)
-      Serial.printf("BodyEnd: %u\n", total);
+    if (index + len == total) Serial.printf("BodyEnd: %u\n", total);
   });
 
   DefaultHeaders::Instance().addHeader("Access-Control-Allow-Origin", "*");
@@ -193,8 +183,6 @@ bool wifiConnected() {
   tft.drawString("IP: " + WiFi.localIP().toString(), 5, tft.height() / 2, 4);
   saveConfigToJSON();
   digitalWrite(LED_BUILTIN, LOW);
-  drawItem(GRAPHIC_WIFI_SYMBOL);
-  // showWiFiSymbol();
   ntpClient.begin();
   return true;
 }
@@ -217,6 +205,10 @@ void configPortal() {
 void handleWeb() {
   static bool webServerStarted = false;
   if (btnPortal) {
+    showWiFiSymbol();
+    blitLeds();
+    // insert a delay to keep the framerate modest
+    FastLED.delay(1000 / FRAMES_PER_SECOND);
     configPortal();
     webServerStarted = wifiConnected();
     btnPortal = false;
@@ -231,8 +223,7 @@ void handleWeb() {
       ntpClient.update();
       EVERY_N_MILLIS(1000) {
         // Serial.println(ntpClient.getFormattedTime());
-        String json = "{\"name\":\"time\",\"value\":\"" +
-                      ntpClient.getFormattedTime() + "\"}";
+        String json = "{\"name\":\"time\",\"value\":\"" + ntpClient.getFormattedTime() + "\"}";
         webSocketsServer.broadcastTXT(json);
         // Serial.println(ntpClient.seconds());
       }

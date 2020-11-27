@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include "layout.h"
 #include <cstdarg>
 #include <vector>
 
-uint8_t gHue = 0; // rotating "base color"
+#include "layout.h"
+
+uint8_t gHue = 0;  // rotating "base color"
 uint8_t mHue = 0;
 
 uint8_t currentColorEffectIndex = 2;
@@ -40,6 +41,21 @@ const String colorEffects[] = {
 };
 const uint8_t colorEffectCount = ARRAY_SIZE(colorEffects);
 
+uint8_t currentModeIndex = 0;
+
+typedef struct {
+  eMode value;
+  String name;
+} ModeAndName;
+typedef ModeAndName ModeAndNameList[];
+
+ModeAndNameList modes = {
+    {MODE_TIME, "Time"},
+    {MODE_WIFI, "WiFi"},
+};
+
+const uint8_t modeCount = ARRAY_SIZE(modes);
+
 CRGB backgroundColor = CRGB(0, 0, 0);
 CRGB foregroundColor = CRGB(255, 255, 255);
 CRGB lastForegroundColor = foregroundColor;
@@ -48,9 +64,7 @@ void resetDots() { fill_solid(minuteLEDs, 4, CRGB(0, 0, 0)); }
 void resetFront() { fill_solid(ledsFront[0], ledsFront.Size(), CRGB(0, 0, 0)); }
 void resetBack() { fill_solid(ledsBack[0], ledsBack.Size(), CRGB(0, 0, 0)); }
 
-void showSolidColor() {
-  fill_solid(ledsBack[0], ledsBack.Size(), backgroundColor);
-}
+void showSolidColor() { fill_solid(ledsBack[0], ledsBack.Size(), backgroundColor); }
 
 CRGB brighter(const CRGB &color, fract8 offset) {
   CRGB incrementalColor = color;
@@ -126,7 +140,7 @@ CRGB drawItem(vLayoutItems layoutItemList) {
     } else if (item.line) {
       ledsFront.DrawLine(item.x1, item.y1, item.x2, item.y2, color);
     }
-  } // for(int i = 0; i < size; i++)
+  }  // for(int i = 0; i < size; i++)
   return color;
 }
 
@@ -134,5 +148,4 @@ void showWiFiSymbol() {
   Serial.println("showWiFiSymbol()");
   resetFront();
   drawItem(GRAPHIC_WIFI_SYMBOL);
-  blitLeds();
 }

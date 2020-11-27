@@ -23,31 +23,26 @@
 
 #pragma once
 
-#include "leds.h"
-
 #include "layout.h"
+#include "leds.h"
 
 uint8_t randomTouretteMode = 0;
 uint8_t cycleTouretteMode = 0;
 uint8_t touretteCycleDuration = 60;
 uint8_t currentTouretteModeIndex = 0;
-uint8_t lastTouretteModeIndex = 0;
 unsigned long touretteCycleTimeout = 0;
 
 uint8_t randomTouretteStart = 0;
 uint8_t cycleTouretteStart = 0;
 uint8_t currentTouretteStartIndex = 0;
-uint8_t lastTouretteStartIndex = 0;
 
 uint8_t randomTouretteMiddle = 0;
 uint8_t cycleTouretteMiddle = 0;
 uint8_t currentTouretteMiddleIndex = 0;
-uint8_t lastTouretteMiddleIndex = 0;
 
 uint8_t randomTouretteEnd = 0;
 uint8_t cycleTouretteEnd = 0;
 uint8_t currentTouretteEndIndex = 0;
-uint8_t lastTouretteEndIndex = 0;
 
 void drawWordSau() { drawItem(WORD_SAU); }
 void drawWordBazi() { drawItem(WORD_BAZI); }

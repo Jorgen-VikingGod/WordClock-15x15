@@ -34,7 +34,7 @@ const String SectionFieldType = "Section";
 const String ButtonsFieldType = "Buttons";
 
 typedef struct SectionField {
-public:
+ public:
   String name;
   String layout;
   String color;
@@ -46,7 +46,7 @@ public:
 };
 
 typedef struct Field {
-public:
+ public:
   SectionField section;
   String name;
   String label;
@@ -100,8 +100,7 @@ void writeFieldsToEEPROM(FieldList fields, uint8_t count) {
 
   for (uint8_t i = 0; i < count; i++) {
     Field field = fields[i];
-    if (!field.getValue && !field.setValue)
-      continue;
+    if (!field.getValue && !field.setValue) continue;
 
     String value = field.getValue();
 
@@ -119,8 +118,7 @@ void writeFieldsToEEPROM(FieldList fields, uint8_t count) {
   EEPROM.commit();
 }
 
-String setFieldValue(String name, String value, FieldList fields,
-                     uint8_t count) {
+String setFieldValue(String name, String value, FieldList fields, uint8_t count) {
   Field field = getField(name, fields, count);
   if (!field.setValue) {
     return "";
@@ -140,8 +138,7 @@ void loadFieldsFromEEPROM(FieldList fields, uint8_t count) {
 
   for (uint8_t i = 0; i < count; i++) {
     Field field = fields[i];
-    if (!field.setValue)
-      continue;
+    if (!field.setValue) continue;
 
     if (field.type == ColorFieldType) {
       byteCount += 3;
@@ -165,8 +162,7 @@ void loadFieldsFromEEPROM(FieldList fields, uint8_t count) {
 
   for (uint8_t i = 0; i < count; i++) {
     Field field = fields[i];
-    if (!field.setValue)
-      continue;
+    if (!field.setValue) continue;
 
     if (field.type == ColorFieldType) {
       String r = String(EEPROM.read(index++));
@@ -186,12 +182,10 @@ String getFieldsJson(FieldList fields, uint8_t count) {
   for (uint8_t i = 0; i < count; i++) {
     Field field = fields[i];
 
-    json += "{\"name\":\"" + field.name + "\",\"label\":\"" + field.label +
-            "\",\"type\":\"" + field.type + "\"";
+    json += "{\"name\":\"" + field.name + "\",\"label\":\"" + field.label + "\",\"type\":\"" + field.type + "\"";
 
     if (field.section.name != "") {
-      json += ",\"section\": {\"name\": \"" + field.section.name +
-              "\", \"layout\": \"" + field.section.layout +
+      json += ",\"section\": {\"name\": \"" + field.section.name + "\", \"layout\": \"" + field.section.layout +
               "\", \"color\": \"" + field.section.color + "\"}";
     }
 
@@ -216,8 +210,7 @@ String getFieldsJson(FieldList fields, uint8_t count) {
 
     json += "}";
 
-    if (i < count - 1)
-      json += ",";
+    if (i < count - 1) json += ",";
   }
 
   json += "]";

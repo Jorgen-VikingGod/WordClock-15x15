@@ -658,14 +658,14 @@ function setBooleanFieldValue(field, btnOn, btnOff, value) {
 function postValue(name, value) {
   $('#status').html('Setting ' + name + ': ' + value + ', please wait...');
 
-  var body = {
+  /*var body = {
     name: name,
     value: value,
-  };
+  };*/
 
-  $.post(
-    urlBase + 'fieldValue' + '?value=' + value + '&name=' + name,
-    body,
+  $.get(
+    urlBase + 'set' + '?value=' + value + '&name=' + name,
+    //body,
     function (data) {
       if (data.name != null) {
         $('#status').html('Set ' + name + ': ' + data.name);
@@ -696,16 +696,16 @@ function postColor(name, value) {
       ', please wait...'
   );
 
-  var body = {
+  /*var body = {
     name: name,
     r: value.r,
     g: value.g,
     b: value.b,
-  };
+  };*/
 
-  $.post(
+  $.get(
     urlBase +
-      'fieldValue?name=' +
+      'set?name=' +
       name +
       '&r=' +
       value.r +
@@ -713,7 +713,7 @@ function postColor(name, value) {
       value.g +
       '&b=' +
       value.b,
-    body,
+    //body,
     function (data) {
       $('#status').html('Set ' + name + ': ' + data);
     }

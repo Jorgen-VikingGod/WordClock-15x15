@@ -38,7 +38,7 @@
 #define BUTTON_1 35
 #define BUTTON_2 0
 
-TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
+TFT_eSPI tft = TFT_eSPI(135, 240);  // Invoke custom library
 
 void setupTft() {
   Serial.println("TFT");

@@ -26,7 +26,7 @@
 #include "leds.h"
 #include "palettes.h"
 
-#define TARGET_FRAME_TIME 25
+const uint8_t targetFrameRate = 25;
 
 uint16_t plasmaTime;
 uint16_t plasmaShift;
@@ -53,7 +53,6 @@ uint8_t noisePaletteSpeedZ = 0;
 uint8_t backgroundBrightness = 64;
 
 uint8_t currentBackgroundIndex = 3;
-uint8_t lastBackgroundIndex = currentBackgroundIndex;
 
 // Scale determines how far apart the pixels in our noise matrix are.  Try
 // changing these values around to see how it affects the motion of the
@@ -76,17 +75,14 @@ void plasma() {
     for (int16_t x = 0; x < width; x++) {
       for (int16_t y = 0; y < height; y++) {
         int16_t r = sin16(plasmaTime) / 256;
-        int16_t h = sin16(x * r * PLASMA_X_FACTOR + plasmaTime) +
-                    cos16(y * (-r) * PLASMA_Y_FACTOR + plasmaTime) +
+        int16_t h = sin16(x * r * PLASMA_X_FACTOR + plasmaTime) + cos16(y * (-r) * PLASMA_Y_FACTOR + plasmaTime) +
                     sin16(y * x * (cos16(-plasmaTime) / 256) / 2);
-        ledsBack.DrawPixel(
-            x, y, CHSV((uint8_t)((h / 256) + 128), 255, backgroundBrightness));
+        ledsBack.DrawPixel(x, y, CHSV((uint8_t)((h / 256) + 128), 255, backgroundBrightness));
       }
     }
     uint16_t OldPlasmaTime = plasmaTime;
     plasmaTime += plasmaShift;
-    if (OldPlasmaTime > plasmaTime)
-      plasmaShift = (random8(0, 5) * 32) + 64;
+    if (OldPlasmaTime > plasmaTime) plasmaShift = (random8(0, 5) * 32) + 64;
   }
 }
 
@@ -126,8 +122,7 @@ void fillnoise8() {
 
       if (dataSmoothing) {
         uint8_t olddata = noise[i][j];
-        uint8_t newdata =
-            scale8(olddata, dataSmoothing) + scale8(data, 256 - dataSmoothing);
+        uint8_t newdata = scale8(olddata, dataSmoothing) + scale8(data, 256 - dataSmoothing);
         data = newdata;
       }
 

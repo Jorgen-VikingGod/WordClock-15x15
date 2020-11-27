@@ -24,16 +24,13 @@
 #define FASTLED_INTERRUPT_RETRY_COUNT 0
 #define FASTLED_ALLOW_INTERRUPTS 0
 
+#include <Arduino.h>
 #include <FS.h>
-
 #include <SPI.h>
 #include <SPIFFS.h>
 
-#include <Arduino.h>
-
 //#include "esp_adc_cal.h"
-#include <WiFi.h>
-
+#include <BH1750.h>  //https://github.com/claws/BH1750
 #include <Button2.h>
 #include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
@@ -41,16 +38,22 @@
 #include <FastLED.h>
 #include <LEDMatrix.h>
 #include <WebSocketsServer.h>
-
-#include <BH1750.h> //https://github.com/claws/BH1750
+#include <WiFi.h>
 #include <Wire.h>
 
-#define I2C_SCL 22//SCL
-#define I2C_SDA 21//SDA
+#define I2C_SCL 22  // SCL
+#define I2C_SDA 21  // SDA
 
 #if defined(FASTLED_VERSION) && (FASTLED_VERSION < 3001008)
 #warning "Requires FastLED 3.1.8 or later; check github for latest code."
 #endif
+
+enum eMode { MODE_IDLE, MODE_BACKGROUND_ONLY, MODE_RESET, MODE_TIME, MODE_WIFI };
+eMode mode = MODE_TIME;
+eMode lastMode = mode;
+
+enum eTimeMode { TIME_IDLE, TIME_UPDATE };
+eTimeMode timeMode = TIME_UPDATE;
 
 Button2 btn1(BUTTON_1);
 int btnPortal = false;
@@ -63,7 +66,7 @@ DNSServer dns;
 
 // const int LED_BUILTIN = 2;
 
-uint8_t pHue = 0; // rotating "base color" used by many of the patterns
+uint8_t pHue = 0;  // rotating "base color" used by many of the patterns
 
 uint8_t power = 1;
 uint8_t lastPower = power;
@@ -84,22 +87,26 @@ uint8_t timeMinute = 0;
 uint8_t timeHour = 0;
 CRGB minuteColor = CRGB::White;
 
-
-#define MATRIX_TILE_WIDTH   3 // width of EACH NEOPIXEL MATRIX (not total display)
-#define MATRIX_TILE_HEIGHT  3 // height of each matrix
-#define MATRIX_TILE_H       5  // number of matrices arranged horizontally
-#define MATRIX_TILE_V       5  // number of matrices arranged vertically
-#define MATRIX_WIDTH        (MATRIX_TILE_WIDTH*MATRIX_TILE_H)
-#define MATRIX_HEIGHT       (MATRIX_TILE_HEIGHT*MATRIX_TILE_V)
-#define MATRIX_SIZE         (MATRIX_WIDTH*MATRIX_HEIGHT)
-#define MATRIX_PANEL        (MATRIX_WIDTH*MATRIX_HEIGHT)
-#define NUM_LEDS            (MATRIX_WIDTH*MATRIX_HEIGHT)
+#define MATRIX_TILE_WIDTH 3   // width of EACH NEOPIXEL MATRIX (not total display)
+#define MATRIX_TILE_HEIGHT 3  // height of each matrix
+#define MATRIX_TILE_H 5       // number of matrices arranged horizontally
+#define MATRIX_TILE_V 5       // number of matrices arranged vertically
+#define MATRIX_WIDTH (MATRIX_TILE_WIDTH * MATRIX_TILE_H)
+#define MATRIX_HEIGHT (MATRIX_TILE_HEIGHT * MATRIX_TILE_V)
+#define MATRIX_SIZE (MATRIX_WIDTH * MATRIX_HEIGHT)
+#define MATRIX_PANEL (MATRIX_WIDTH * MATRIX_HEIGHT)
+#define NUM_LEDS (MATRIX_WIDTH * MATRIX_HEIGHT)
 
 // create our matrix based on matrix definition
-cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V, HORIZONTAL_BLOCKS> leds;
-cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V, HORIZONTAL_BLOCKS> ledsFront;
-cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V, HORIZONTAL_BLOCKS> ledsBack;
-
+cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V,
+           HORIZONTAL_BLOCKS>
+    leds;
+cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V,
+           HORIZONTAL_BLOCKS>
+    ledsFront;
+cLEDMatrix<MATRIX_TILE_WIDTH, MATRIX_TILE_HEIGHT, HORIZONTAL_ZIGZAG_MATRIX, MATRIX_TILE_H, MATRIX_TILE_V,
+           HORIZONTAL_BLOCKS>
+    ledsBack;
 
 static const int width = 15;
 static const int height = 15;
@@ -123,8 +130,7 @@ CRGB minuteLEDs[4];
 #define NUM_LEDS NUM_LEDS_PER_STRIP *NUM_STRIPS
 // CRGB leds[NUM_LEDS];
 
-#define MILLI_AMPS                                                             \
-  1000 // IMPORTANT: set the max milli-Amps of your power supply (4A = 4000mA)
+#define MILLI_AMPS 1000  // IMPORTANT: set the max milli-Amps of your power supply (4A = 4000mA)
 #define FRAMES_PER_SECOND 120
 
 // -- The core to run FastLED.show()
@@ -140,6 +146,8 @@ CRGB minuteLEDs[4];
 #include "tft.h"
 #include "web.h"
 #include "wifi.h"
+
+tmElements_t lastTime;
 
 // wifi ssid and password should be added to a file in the sketch named
 // secrets.h the secrets.h file should be added to the .gitignore file and never
@@ -188,8 +196,7 @@ void FastLEDshowTask(void *pvParameters) {
   }
 }
 
-float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
-             float inputValue, float curve) {
+float fscale(float originalMin, float originalMax, float newBegin, float newEnd, float inputValue, float curve) {
   float OriginalRange = 0;
   float NewRange = 0;
   float zeroRefCurVal = 0;
@@ -226,7 +233,7 @@ float fscale(float originalMin, float originalMax, float newBegin, float newEnd,
     invFlag = 1;
   }
   zeroRefCurVal = inputValue - originalMin;
-  normalizedCurVal = zeroRefCurVal / OriginalRange; // normalize to 0 - 1 float
+  normalizedCurVal = zeroRefCurVal / OriginalRange;  // normalize to 0 - 1 float
   // Check for originalMin > originalMax  - the math for all other cases i.e.
   // negative numbers seems to work out fine
   if (originalMin > originalMax) {
@@ -277,8 +284,7 @@ void nextPalette() {
     currentPaletteIndex = (currentPaletteIndex + 1) % paletteCount;
     targetPalette = palettes[currentPaletteIndex];
 
-    String json = "{\"name\":\"palette\",\"value\":\"" +
-                  String(currentPaletteIndex) + "\"}";
+    String json = "{\"name\":\"palette\",\"value\":\"" + String(currentPaletteIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
 
     paletteTimeout = millis() + (paletteDuration * 1000);
@@ -294,11 +300,9 @@ void nextTouretteMode() {
     if (randomTouretteMode) {
       currentTouretteModeIndex = random(touretteModeCount);
     } else {
-      currentTouretteModeIndex =
-          (currentTouretteModeIndex + 1) % touretteModeCount;
+      currentTouretteModeIndex = (currentTouretteModeIndex + 1) % touretteModeCount;
     }
-    String json = "{\"name\":\"touretteModes\",\"value\":\"" +
-                  String(currentTouretteModeIndex) + "\"}";
+    String json = "{\"name\":\"touretteModes\",\"value\":\"" + String(currentTouretteModeIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
     touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
@@ -313,11 +317,9 @@ void nextTouretteStart() {
     if (randomTouretteStart) {
       currentTouretteStartIndex = random(touretteStartWordCount);
     } else {
-      currentTouretteStartIndex =
-          (currentTouretteStartIndex + 1) % touretteStartWordCount;
+      currentTouretteStartIndex = (currentTouretteStartIndex + 1) % touretteStartWordCount;
     }
-    String json = "{\"name\":\"touretteStartWords\",\"value\":\"" +
-                  String(currentTouretteStartIndex) + "\"}";
+    String json = "{\"name\":\"touretteStartWords\",\"value\":\"" + String(currentTouretteStartIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
     touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
@@ -332,11 +334,9 @@ void nextTouretteMiddle() {
     if (randomTouretteMiddle) {
       currentTouretteMiddleIndex = random(touretteMiddleWordCount);
     } else {
-      currentTouretteMiddleIndex =
-          (currentTouretteMiddleIndex + 1) % touretteMiddleWordCount;
+      currentTouretteMiddleIndex = (currentTouretteMiddleIndex + 1) % touretteMiddleWordCount;
     }
-    String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" +
-                  String(currentTouretteMiddleIndex) + "\"}";
+    String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" + String(currentTouretteMiddleIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
     touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
@@ -351,11 +351,9 @@ void nextTouretteEnd() {
     if (randomTouretteEnd) {
       currentTouretteEndIndex = random(touretteEndWordCount);
     } else {
-      currentTouretteEndIndex =
-          (currentTouretteEndIndex + 1) % touretteEndWordCount;
+      currentTouretteEndIndex = (currentTouretteEndIndex + 1) % touretteEndWordCount;
     }
-    String json = "{\"name\":\"touretteEndWords\",\"value\":\"" +
-                  String(currentTouretteEndIndex) + "\"}";
+    String json = "{\"name\":\"touretteEndWords\",\"value\":\"" + String(currentTouretteEndIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
     touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
@@ -397,7 +395,7 @@ void setup() {
   // set master brightness control
   FastLED.setBrightness(brightness);
 
-  loopDelayMS = TARGET_FRAME_TIME;
+  loopDelayMS = targetFrameRate;
   lastLoop = millis() - loopDelayMS;
   plasmaShift = (random8(0, 5) * 32) + 64;
   plasmaTime = 0;
@@ -407,8 +405,7 @@ void setup() {
   Serial.println(core);
 
   // -- Create the FastLED show task
-  xTaskCreatePinnedToCore(FastLEDshowTask, "FastLEDshowTask", 2048, NULL, 2,
-                          &FastLEDshowTaskHandle, FASTLED_SHOW_CORE);
+  xTaskCreatePinnedToCore(FastLEDshowTask, "FastLEDshowTask", 2048, NULL, 2, &FastLEDshowTaskHandle, FASTLED_SHOW_CORE);
 }
 
 void handleMinuteDots(uint8_t timeMinute) {
@@ -425,24 +422,10 @@ void handleMinuteDots(uint8_t timeMinute) {
   }
 }
 
-bool updateTime = false;
-
-bool updateFront() {
-  return daylightSaving != lastDaylightSaving || power != lastPower ||
-         currentColorEffectIndex != lastColorEffectIndex ||
-         foregroundColor != lastForegroundColor || tourette != lastTourette ||
-         currentBackgroundIndex != lastBackgroundIndex ||
-         currentTouretteModeIndex != lastTouretteModeIndex ||
-         currentTouretteStartIndex != lastTouretteStartIndex ||
-         currentTouretteMiddleIndex != lastTouretteMiddleIndex ||
-         currentTouretteEndIndex != lastTouretteEndIndex;
-}
-
 void handleTouretteMode() {
   if (randomTouretteMode && cycleTouretteMode == 0) {
     currentTouretteModeIndex = random(touretteModeCount);
-    String json = "{\"name\":\"touretteModes\",\"value\":\"" +
-                  String(currentTouretteModeIndex) + "\"}";
+    String json = "{\"name\":\"touretteModes\",\"value\":\"" + String(currentTouretteModeIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
   }
   Serial.print("mode: ");
@@ -455,8 +438,7 @@ void handleTouretteStart() {
     Serial.println("hey du");
     if (randomTouretteStart && cycleTouretteStart == 0) {
       currentTouretteStartIndex = random(touretteStartWordCount);
-      String json = "{\"name\":\"touretteStartWords\",\"value\":\"" +
-                    String(currentTouretteStartIndex) + "\"}";
+      String json = "{\"name\":\"touretteStartWords\",\"value\":\"" + String(currentTouretteStartIndex) + "\"}";
       webSocketsServer.broadcastTXT(json);
     }
     touretteStartWords[currentTouretteStartIndex].drawWord();
@@ -468,8 +450,7 @@ void handleTouretteStart() {
 void handleTouretteMiddle() {
   if (randomTouretteMiddle && cycleTouretteMiddle == 0) {
     currentTouretteMiddleIndex = random(touretteMiddleWordCount);
-    String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" +
-                  String(currentTouretteMiddleIndex) + "\"}";
+    String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" + String(currentTouretteMiddleIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
   }
   touretteMiddleWords[currentTouretteMiddleIndex].drawWord();
@@ -483,8 +464,7 @@ void handleTouretteEnd() {
     Serial.println("du");
     if (randomTouretteEnd && cycleTouretteEnd == 0) {
       currentTouretteEndIndex = random(touretteEndWordCount);
-      String json = "{\"name\":\"touretteEndWords\",\"value\":\"" +
-                    String(currentTouretteEndIndex) + "\"}";
+      String json = "{\"name\":\"touretteEndWords\",\"value\":\"" + String(currentTouretteEndIndex) + "\"}";
       webSocketsServer.broadcastTXT(json);
     }
     touretteEndWords[currentTouretteEndIndex].drawWord();
@@ -538,98 +518,113 @@ void handleHours(uint8_t timeMin, uint8_t timeHrs) {
   Serial.print("hour: ");
   Serial.print(timeHrs);
   switch (timeHrs) {
-  case 0:
-    drawItem(WORD_H_ZWOELF);
-    Serial.println(" - zwoelf");
-    break;
-  case 1:
-    if (timeMin < 5) {
-      drawItem(WORD_H_EIN);
-      Serial.println(" - ein");
-    } else {
-      drawItem(WORD_H_EINS);
-      Serial.println(" - eins");
-    }
-    break;
-  case 2:
-    drawItem(WORD_H_ZWEI);
-    Serial.println(" - zwei");
-    break;
-  case 3:
-    drawItem(WORD_H_DREI);
-    Serial.println(" - drei");
-    break;
-  case 4:
-    drawItem(WORD_H_VIER);
-    Serial.println(" - vier");
-    break;
-  case 5:
-    drawItem(WORD_H_FUENF);
-    Serial.println(" - fünf");
-    break;
-  case 6:
-    drawItem(WORD_H_SECHS);
-    Serial.println(" - sechs");
-    break;
-  case 7:
-    drawItem(WORD_H_SIEBEN);
-    Serial.println(" - sieben");
-    break;
-  case 8:
-    drawItem(WORD_H_ACHT);
-    Serial.println(" - acht");
-    break;
-  case 9:
-    drawItem(WORD_H_NEUN);
-    Serial.println(" - neun");
-    break;
-  case 10:
-    drawItem(WORD_H_ZEHN);
-    Serial.println(" - zehn");
-    break;
-  case 11:
-    drawItem(WORD_H_ELF);
-    Serial.println(" - elf");
-    break;
-  } // switch(timeHrs) {
+    case 0:
+      drawItem(WORD_H_ZWOELF);
+      Serial.println(" - zwoelf");
+      break;
+    case 1:
+      if (timeMin < 5) {
+        drawItem(WORD_H_EIN);
+        Serial.println(" - ein");
+      } else {
+        drawItem(WORD_H_EINS);
+        Serial.println(" - eins");
+      }
+      break;
+    case 2:
+      drawItem(WORD_H_ZWEI);
+      Serial.println(" - zwei");
+      break;
+    case 3:
+      drawItem(WORD_H_DREI);
+      Serial.println(" - drei");
+      break;
+    case 4:
+      drawItem(WORD_H_VIER);
+      Serial.println(" - vier");
+      break;
+    case 5:
+      drawItem(WORD_H_FUENF);
+      Serial.println(" - fünf");
+      break;
+    case 6:
+      drawItem(WORD_H_SECHS);
+      Serial.println(" - sechs");
+      break;
+    case 7:
+      drawItem(WORD_H_SIEBEN);
+      Serial.println(" - sieben");
+      break;
+    case 8:
+      drawItem(WORD_H_ACHT);
+      Serial.println(" - acht");
+      break;
+    case 9:
+      drawItem(WORD_H_NEUN);
+      Serial.println(" - neun");
+      break;
+    case 10:
+      drawItem(WORD_H_ZEHN);
+      Serial.println(" - zehn");
+      break;
+    case 11:
+      drawItem(WORD_H_ELF);
+      Serial.println(" - elf");
+      break;
+  }  // switch(timeHrs) {
 }
 
-void loop() {
-  handleWeb();
-
-  if (power == 0) {
-    resetFront();
-    resetBack();
-  } else {
-
-    if (autoBrightness) {
-      EVERY_N_MILLISECONDS(5000) {
-        uint16_t lux = lightSensor.readLightLevel();
-        Serial.print("lux: ");
-        Serial.print(lux);
-        Serial.print(" lux log: ");
-        brightness = fscale(0, 3000, 20, 255, lux, 5);
-        Serial.println(brightness);
-        FastLED.setBrightness(brightness);
-      }
+void processAutoBrightness() {
+  if (autoBrightness) {
+    EVERY_N_MILLISECONDS(5000) {
+      uint16_t lux = lightSensor.readLightLevel();
+      Serial.print("lux: ");
+      Serial.print(lux);
+      Serial.print(" lux log: ");
+      brightness = fscale(0, 3000, 20, 255, lux, 5);
+      Serial.println(brightness);
+      FastLED.setBrightness(brightness);
     }
+  }
+}
 
-    // Call the current pattern function once, updating the 'leds' array
-    backgrounds[currentBackgroundIndex].background();
+void processBackground() {
+  // Call the current pattern function once, updating the 'leds' array
+  backgrounds[currentBackgroundIndex].background();
+}
 
-    uint8_t currentMinute = ntpClient.minutes();
-    uint8_t currentHour = ntpClient.hours();
-    if (timeMinute != currentMinute && timeHour != currentHour) {
-      timeMinute = currentMinute;
-      timeHour = currentHour;
-      updateTime = true;
+void processPalettes() {
+  EVERY_N_MILLISECONDS(40) {
+    // slowly blend the current palette to the next
+    nblendPaletteTowardPalette(currentPalette, targetPalette, 8);
+    pHue++;  // slowly cycle the "base color" through the rainbow
+  }
+  // cycle fields
+  nextPalette();
+}
+
+void updateLEDs() {
+  blitLeds();
+  // insert a delay to keep the framerate modest
+  FastLED.delay(1000 / FRAMES_PER_SECOND);
+}
+
+void processTimeAndUpdate() {
+  const tmElements_t currentTime = ntpClient.timeComponents();
+  if (lastTime.Minute != currentTime.Minute) {
+    lastTime = currentTime;
+    timeMode = TIME_UPDATE;
+  }
+
+  processAutoBrightness();
+  processBackground();
+
+  switch (timeMode) {
+    default:
+    case TIME_IDLE: {
+      break;
     }
-    if (updateFront()) {
-      updateTime = true;
-      timeMinute = currentMinute;
-      timeHour = currentHour;
-    }
-    if (updateTime) {
+    case TIME_UPDATE: {
       resetFront();
       if (tourette == 0) {
         drawItem(WORD_ES_IST);
@@ -642,21 +637,17 @@ void loop() {
         handleTouretteMiddle();
       }
       // show minutes
-      handleMinutes(timeMinute);
+      handleMinutes(currentTime.Minute);
       // time logic (modify hours depending on current time)
-      if (timeMinute > 24) {
-        timeHour++;
-      }
-      if (timeHour >= 12) {
-        timeHour -= 12;
-      }
-      if (timeHour == 12) {
-        timeHour = 0;
-      }
+      uint8_t timeHour = currentTime.Hour;
+      if (currentTime.Minute > 24) timeHour++;
+      if (timeHour >= 12) timeHour -= 12;
+      if (timeHour == 12) timeHour = 0;
+
       // show hours
-      handleHours(timeMinute, timeHour);
+      handleHours(currentTime.Minute, timeHour);
       // show 'UHR' (o' clock)
-      if (timeMinute < 5) {
+      if (currentTime.Minute < 5) {
         drawItem(WORD_UHR);
         Serial.println("uhr");
       }
@@ -665,33 +656,44 @@ void loop() {
       }
       // calculate minutes (=dots) from 1-4 (one for each corner)
       handleMinuteDots(timeMinute);
-      // store last index values
-      lastBackgroundIndex = currentBackgroundIndex;
-      lastTouretteModeIndex = currentTouretteModeIndex;
-      lastTouretteStartIndex = currentTouretteStartIndex;
-      lastTouretteMiddleIndex = currentTouretteMiddleIndex;
-      lastTouretteEndIndex = currentTouretteEndIndex;
-      lastPower = power;
-      lastDaylightSaving = daylightSaving;
-      lastTourette = tourette;
-      lastColorEffectIndex = currentColorEffectIndex;
-      lastForegroundColor = foregroundColor;
-      updateTime = false;
+      timeMode = TIME_IDLE;
+      break;
     }
-
-    EVERY_N_MILLISECONDS(40) {
-      // slowly blend the current palette to the next
-      nblendPaletteTowardPalette(currentPalette, targetPalette, 8);
-      pHue++; // slowly cycle the "base color" through the rainbow
-    }
-    // cycle fields
-    nextPalette();
-    nextTouretteMode();
-    nextTouretteStart();
-    nextTouretteMiddle();
-    nextTouretteEnd();
   }
-  blitLeds();
-  // insert a delay to keep the framerate modest
-  FastLED.delay(1000 / FRAMES_PER_SECOND);
+  processPalettes();
+  nextTouretteMode();
+  nextTouretteStart();
+  nextTouretteMiddle();
+  nextTouretteEnd();
+  updateLEDs();
+}
+
+void loop() {
+  handleWeb();
+
+  switch (mode) {
+    default:
+    case MODE_IDLE:
+      break;
+    case MODE_BACKGROUND_ONLY:
+      processAutoBrightness();
+      processBackground();
+      processPalettes();
+      updateLEDs();
+      break;
+    case MODE_RESET:
+      resetFront();
+      resetBack();
+      updateLEDs();
+      mode = MODE_IDLE;
+      break;
+    case MODE_TIME:
+      processTimeAndUpdate();
+      break;
+    case MODE_WIFI:
+      showWiFiSymbol();
+      lastMode = mode;
+      mode = MODE_BACKGROUND_ONLY;
+      break;
+  }
 }
