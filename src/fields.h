@@ -178,7 +178,8 @@ String getBackgrounds() {
 String getNoisePaletteSpeedX() { return String(noisePaletteSpeedX); }
 
 String setNoisePaletteSpeedX(String value) {
-  uint8_t newValue = constrain(value.toInt(), 0, 24);
+  uint8_t newValue = value.toInt();
+  newValue = constrain(newValue, 0, 24);
   if (noisePaletteSpeedX != newValue) {
     noisePaletteSpeedX = newValue;
     timeMode = TIME_UPDATE;
@@ -189,7 +190,8 @@ String setNoisePaletteSpeedX(String value) {
 String getNoisePaletteSpeedY() { return String(noisePaletteSpeedY); }
 
 String setNoisePaletteSpeedY(String value) {
-  uint8_t newValue = constrain(value.toInt(), 0, 24);
+  uint8_t newValue = value.toInt();
+  newValue = constrain(newValue, 0, 24);
   if (noisePaletteSpeedY != newValue) {
     noisePaletteSpeedY = newValue;
     timeMode = TIME_UPDATE;
@@ -200,7 +202,8 @@ String setNoisePaletteSpeedY(String value) {
 String getNoisePaletteSpeedZ() { return String(noisePaletteSpeedZ); }
 
 String setNoisePaletteSpeedZ(String value) {
-  uint8_t newValue = constrain(value.toInt(), 0, 24);
+  uint8_t newValue = value.toInt();
+  newValue = constrain(newValue, 0, 24);
   if (noisePaletteSpeedZ != newValue) {
     noisePaletteSpeedZ = newValue;
     timeMode = TIME_UPDATE;
@@ -232,8 +235,8 @@ String setBackgroundColor(String value) {
 String getPalette() { return String(currentPaletteIndex); }
 
 String setPalette(String value) {
-  uint8_t newValue = constrain(value.toInt(), 0, paletteCount);
-  if (newValue >= paletteCount) newValue = paletteCount - 1;
+  uint8_t newValue = value.toInt();
+  newValue = constrain(newValue, 0, paletteCount - 1);
   if (currentPaletteIndex != newValue) {
     currentPaletteIndex = newValue;
     timeMode = TIME_UPDATE;
@@ -268,7 +271,8 @@ String setCyclePalettes(String value) {
 String getPaletteDuration() { return String(paletteDuration); }
 
 String setPaletteDuration(String value) {
-  uint8_t newValue = constrain(value.toInt(), 1, 255);
+  uint8_t newValue = value.toInt();
+  newValue = constrain(newValue, 1, 255);
   if (paletteDuration != newValue) {
     paletteDuration = newValue;
     paletteTimeout = millis() + (paletteDuration * 1000);
@@ -353,7 +357,8 @@ String setCycleTouretteMode(String value) {
 String getTouretteCycleDuration() { return String(touretteCycleDuration); }
 
 String setTouretteCycleDuration(String value) {
-  uint8_t newValue = constrain(value.toInt(), 1, 255);
+  uint8_t newValue = value.toInt();
+  newValue = constrain(newValue, 1, 255);
   if (touretteCycleDuration != newValue) {
     touretteCycleDuration = newValue;
     touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
