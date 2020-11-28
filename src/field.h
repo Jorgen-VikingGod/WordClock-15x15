@@ -126,10 +126,8 @@ String setFieldValue(String name, String value, FieldList fields, uint8_t count)
   String result = field.setValue(value);
 
   String json = "{\"name\":\"" + name + "\",\"value\":" + result + "}";
-  webSocketsServer.broadcastTXT(json);
-
+  ws.textAll(json);
   writeFieldsToEEPROM(fields, count);
-
   return result;
 }
 

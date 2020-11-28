@@ -8,7 +8,9 @@ var postValueTimer = {};
 
 var ignoreColorChange = false;
 
-var ws = new ReconnectingWebSocket('ws://' + address + ':81/', ['arduino']);
+
+var ws = new WebSocket('ws://' + address + '/ws', ['arduino']);
+//var ws = new ReconnectingWebSocket('ws://' + address + ':81/', ['arduino']);
 ws.debug = true;
 
 var sections = [];

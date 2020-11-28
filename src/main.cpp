@@ -37,7 +37,6 @@
 #include <ESPAsyncWiFiManager.h>
 #include <FastLED.h>
 #include <LEDMatrix.h>
-#include <WebSocketsServer.h>
 #include <WiFi.h>
 #include <Wire.h>
 
@@ -61,7 +60,7 @@ int btnPortal = false;
 BH1750 lightSensor;
 
 AsyncWebServer webServer(80);
-WebSocketsServer webSocketsServer = WebSocketsServer(81);
+AsyncWebSocket ws("/ws");
 DNSServer dns;
 
 // const int LED_BUILTIN = 2;
@@ -285,8 +284,7 @@ void nextPalette() {
     targetPalette = palettes[currentPaletteIndex];
 
     String json = "{\"name\":\"palette\",\"value\":\"" + String(currentPaletteIndex) + "\"}";
-    webSocketsServer.broadcastTXT(json);
-
+    ws.textAll(json);
     paletteTimeout = millis() + (paletteDuration * 1000);
   }
 }
@@ -304,7 +302,7 @@ void nextTouretteCycle() {
         currentTouretteModeIndex = (currentTouretteModeIndex + 1) % touretteModeCount;
       }
       String json = "{\"name\":\"touretteModes\",\"value\":\"" + String(currentTouretteModeIndex) + "\"}";
-      webSocketsServer.broadcastTXT(json);
+      ws.textAll(json);
     }
     if (touretteModes[currentTouretteModeIndex] == "Start" && cycleTouretteStart == 1) {
       // add one to the current start word number, and wrap around at the end
@@ -314,7 +312,7 @@ void nextTouretteCycle() {
         currentTouretteStartIndex = (currentTouretteStartIndex + 1) % touretteStartWordCount;
       }
       String json = "{\"name\":\"touretteStartWords\",\"value\":\"" + String(currentTouretteStartIndex) + "\"}";
-      webSocketsServer.broadcastTXT(json);
+      ws.textAll(json);
     }
     if (cycleTouretteMiddle == 1) {
       // add one to the current middle word number, and wrap around at the end
@@ -324,7 +322,7 @@ void nextTouretteCycle() {
         currentTouretteMiddleIndex = (currentTouretteMiddleIndex + 1) % touretteMiddleWordCount;
       }
       String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" + String(currentTouretteMiddleIndex) + "\"}";
-      webSocketsServer.broadcastTXT(json);
+      ws.textAll(json);
     }
     if (touretteModes[currentTouretteModeIndex] == "End" && cycleTouretteEnd == 1) {
       // add one to the current end word number, and wrap around at the end
@@ -334,7 +332,7 @@ void nextTouretteCycle() {
         currentTouretteEndIndex = (currentTouretteEndIndex + 1) % touretteEndWordCount;
       }
       String json = "{\"name\":\"touretteEndWords\",\"value\":\"" + String(currentTouretteEndIndex) + "\"}";
-      webSocketsServer.broadcastTXT(json);
+      ws.textAll(json);
     }
     touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
