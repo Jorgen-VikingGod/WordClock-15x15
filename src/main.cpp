@@ -291,70 +291,51 @@ void nextPalette() {
   }
 }
 
-void nextTouretteMode() {
+void nextTouretteCycle() {
   if (tourette == 0) {
     return;
   }
-  if (cycleTouretteMode == 1 && (millis() > touretteCycleTimeout)) {
-    // add one to the current mode number, and wrap around at the end
-    if (randomTouretteMode) {
-      currentTouretteModeIndex = random(touretteModeCount);
-    } else {
-      currentTouretteModeIndex = (currentTouretteModeIndex + 1) % touretteModeCount;
+  if ((millis() > touretteCycleTimeout)) {
+    if (cycleTouretteMode == 1) {
+      // add one to the current mode number, and wrap around at the end
+      if (randomTouretteMode) {
+        currentTouretteModeIndex = random(touretteModeCount);
+      } else {
+        currentTouretteModeIndex = (currentTouretteModeIndex + 1) % touretteModeCount;
+      }
+      String json = "{\"name\":\"touretteModes\",\"value\":\"" + String(currentTouretteModeIndex) + "\"}";
+      webSocketsServer.broadcastTXT(json);
     }
-    String json = "{\"name\":\"touretteModes\",\"value\":\"" + String(currentTouretteModeIndex) + "\"}";
-    webSocketsServer.broadcastTXT(json);
-    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
-  }
-}
-
-void nextTouretteStart() {
-  if (touretteModes[currentTouretteModeIndex] != "Start" || tourette == 0) {
-    return;
-  }
-  if (cycleTouretteStart == 1 && (millis() > touretteCycleTimeout)) {
-    // add one to the current start word number, and wrap around at the end
-    if (randomTouretteStart) {
-      currentTouretteStartIndex = random(touretteStartWordCount);
-    } else {
-      currentTouretteStartIndex = (currentTouretteStartIndex + 1) % touretteStartWordCount;
+    if (touretteModes[currentTouretteModeIndex] == "Start" && cycleTouretteStart == 1) {
+      // add one to the current start word number, and wrap around at the end
+      if (randomTouretteStart) {
+        currentTouretteStartIndex = random(touretteStartWordCount);
+      } else {
+        currentTouretteStartIndex = (currentTouretteStartIndex + 1) % touretteStartWordCount;
+      }
+      String json = "{\"name\":\"touretteStartWords\",\"value\":\"" + String(currentTouretteStartIndex) + "\"}";
+      webSocketsServer.broadcastTXT(json);
     }
-    String json = "{\"name\":\"touretteStartWords\",\"value\":\"" + String(currentTouretteStartIndex) + "\"}";
-    webSocketsServer.broadcastTXT(json);
-    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
-  }
-}
-
-void nextTouretteMiddle() {
-  if (tourette == 0) {
-    return;
-  }
-  if (cycleTouretteMiddle == 1 && (millis() > touretteCycleTimeout)) {
-    // add one to the current middle word number, and wrap around at the end
-    if (randomTouretteMiddle) {
-      currentTouretteMiddleIndex = random(touretteMiddleWordCount);
-    } else {
-      currentTouretteMiddleIndex = (currentTouretteMiddleIndex + 1) % touretteMiddleWordCount;
+    if (cycleTouretteMiddle == 1) {
+      // add one to the current middle word number, and wrap around at the end
+      if (randomTouretteMiddle) {
+        currentTouretteMiddleIndex = random(touretteMiddleWordCount);
+      } else {
+        currentTouretteMiddleIndex = (currentTouretteMiddleIndex + 1) % touretteMiddleWordCount;
+      }
+      String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" + String(currentTouretteMiddleIndex) + "\"}";
+      webSocketsServer.broadcastTXT(json);
     }
-    String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" + String(currentTouretteMiddleIndex) + "\"}";
-    webSocketsServer.broadcastTXT(json);
-    touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
-  }
-}
-
-void nextTouretteEnd() {
-  if (touretteModes[currentTouretteModeIndex] != "End" || tourette == 0) {
-    return;
-  }
-  if (cycleTouretteEnd == 1 && (millis() > touretteCycleTimeout)) {
-    // add one to the current end word number, and wrap around at the end
-    if (randomTouretteEnd) {
-      currentTouretteEndIndex = random(touretteEndWordCount);
-    } else {
-      currentTouretteEndIndex = (currentTouretteEndIndex + 1) % touretteEndWordCount;
+    if (touretteModes[currentTouretteModeIndex] == "End" && cycleTouretteEnd == 1) {
+      // add one to the current end word number, and wrap around at the end
+      if (randomTouretteEnd) {
+        currentTouretteEndIndex = random(touretteEndWordCount);
+      } else {
+        currentTouretteEndIndex = (currentTouretteEndIndex + 1) % touretteEndWordCount;
+      }
+      String json = "{\"name\":\"touretteEndWords\",\"value\":\"" + String(currentTouretteEndIndex) + "\"}";
+      webSocketsServer.broadcastTXT(json);
     }
-    String json = "{\"name\":\"touretteEndWords\",\"value\":\"" + String(currentTouretteEndIndex) + "\"}";
-    webSocketsServer.broadcastTXT(json);
     touretteCycleTimeout = millis() + (touretteCycleDuration * 1000);
   }
 }
@@ -423,11 +404,13 @@ void handleMinuteDots(uint8_t timeMinute) {
 }
 
 void handleTouretteMode() {
-  if (randomTouretteMode && cycleTouretteMode == 0) {
-    currentTouretteModeIndex = random(touretteModeCount);
-    String json = "{\"name\":\"touretteModes\",\"value\":\"" + String(currentTouretteModeIndex) + "\"}";
-    webSocketsServer.broadcastTXT(json);
-  }
+  /*
+    if (randomTouretteMode && cycleTouretteMode == 0) {
+      currentTouretteModeIndex = random(touretteModeCount);
+      String json = "{\"name\":\"touretteModes\",\"value\":\"" + String(currentTouretteModeIndex) + "\"}";
+      webSocketsServer.broadcastTXT(json);
+    }
+  */
   Serial.print("mode: ");
   Serial.println(touretteModes[currentTouretteModeIndex]);
 }
@@ -436,11 +419,13 @@ void handleTouretteStart() {
   if (touretteModes[currentTouretteModeIndex] == "Start") {
     drawItem(WORD_HEY_DU);
     Serial.println("hey du");
+    /*
     if (randomTouretteStart && cycleTouretteStart == 0) {
       currentTouretteStartIndex = random(touretteStartWordCount);
       String json = "{\"name\":\"touretteStartWords\",\"value\":\"" + String(currentTouretteStartIndex) + "\"}";
       webSocketsServer.broadcastTXT(json);
     }
+    */
     touretteStartWords[currentTouretteStartIndex].drawWord();
     Serial.print("start: ");
     Serial.println(touretteStartWords[currentTouretteStartIndex].name);
@@ -448,11 +433,13 @@ void handleTouretteStart() {
 }
 
 void handleTouretteMiddle() {
+  /*
   if (randomTouretteMiddle && cycleTouretteMiddle == 0) {
     currentTouretteMiddleIndex = random(touretteMiddleWordCount);
     String json = "{\"name\":\"touretteMiddleWords\",\"value\":\"" + String(currentTouretteMiddleIndex) + "\"}";
     webSocketsServer.broadcastTXT(json);
   }
+  */
   touretteMiddleWords[currentTouretteMiddleIndex].drawWord();
   Serial.print("middle: ");
   Serial.println(touretteMiddleWords[currentTouretteMiddleIndex].name);
@@ -462,11 +449,13 @@ void handleTouretteEnd() {
   if (touretteModes[currentTouretteModeIndex] == "End") {
     drawItem(WORD_DU);
     Serial.println("du");
+    /*
     if (randomTouretteEnd && cycleTouretteEnd == 0) {
       currentTouretteEndIndex = random(touretteEndWordCount);
       String json = "{\"name\":\"touretteEndWords\",\"value\":\"" + String(currentTouretteEndIndex) + "\"}";
       webSocketsServer.broadcastTXT(json);
     }
+    */
     touretteEndWords[currentTouretteEndIndex].drawWord();
     Serial.print("end: ");
     Serial.println(touretteEndWords[currentTouretteEndIndex].name);
@@ -661,10 +650,7 @@ void processTimeAndUpdate() {
     }
   }
   processPalettes();
-  nextTouretteMode();
-  nextTouretteStart();
-  nextTouretteMiddle();
-  nextTouretteEnd();
+  nextTouretteCycle();
   updateLEDs();
 }
 
