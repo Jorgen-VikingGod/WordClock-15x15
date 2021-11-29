@@ -21,13 +21,33 @@ Please remember that the full path for a file must be < 32 bits (it can't be `/j
 - Button2@1.0.0
 - ArduinoJson
 - ESP Async WebServer
-- WebSockets
-- https://github.com/dx168b/async-mqtt-client.git
-- https://github.com/alanswx/ESPAsyncWiFiManager.git
 - https://github.com/samguyer/FastLED.git
 - https://github.com/Jorgen-VikingGod/LEDMatrix.git
+- https://github.com/khoih-prog/ESP_DoubleResetDetector	
+- https://github.com/khoih-prog/ESPAsync_WiFiManage
 
 All other required packages are provided by PlatformIO
+
+## Configure
+
+1. press and hold button 1 (same side as reset button)
+2. press reset button
+3. release button 1 after display shows this:
+<img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/1_start_config_ap.jpg" width="300" alt="1_start_config_ap.jpg"> 
+4. select AP from wlan device list
+<img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/2_select_ap.jpg" width="300" alt="2_select_ap.jpg">
+5. press Configuration in WiFi config landing page
+<img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/3_wifi_config_portal.jpg" width="300" alt="3_wifi_config_portal.jpg">
+7. configure your WiFi network (select one from the list or type in manually)
+<img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/4_configure_wifi.jpg" width="300" alt="4_configure_wifi.jpg">
+8. network configured - wait until device reboots
+<img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/5_wifi_configured.jpg" width="300" alt="5_wifi_configured.jpg">
+9. WiFi connected
+<img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/6_wifi_connected.jpg" width="300" alt="6_wifi_connected.jpg">
+
+## Webinterface
+
+<img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/7_webui_1.jpg" width="300" alt="7_webui_1.jpg"> <img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/8_webui_2.jpg" width="300" alt="8_webui_2.jpg"> <img src="https://github.com/Jorgen-VikingGod/WordClock-15x15/blob/ae006447628a2f59e0f9a363142f86a3f16432dc/docs/9_webui_3.jpg" width="300" alt="9_webui_3.jpg">
 
 ## API
 
