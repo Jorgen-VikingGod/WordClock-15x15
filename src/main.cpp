@@ -34,11 +34,22 @@
 #include <Button2.h>
 #include <EEPROM.h>
 #include <ESPAsyncWebServer.h>
-#include <ESPAsyncWiFiManager.h>
 #include <FastLED.h>
 #include <LEDMatrix.h>
 #include <WiFi.h>
 #include <Wire.h>
+
+#define USE_SPIFFS true
+#define ESP_DRD_USE_EEPROM true
+#include <ESPAsync_WiFiManager.h>  //https://github.com/khoih-prog/ESPAsync_WiFiManager
+#define DRD_TIMEOUT 10
+#define DRD_ADDRESS 0
+#include <ESP_DoubleResetDetector.h>  //https://github.com/khoih-prog/ESP_DoubleResetDetector
+DoubleResetDetector *drd;
+
+bool initialConfig = false;
+AsyncWebServer webServerConfig(80);
+DNSServer dnsServerConfig;
 
 #define I2C_SCL 22  // SCL
 #define I2C_SDA 21  // SDA
@@ -55,7 +66,6 @@ enum eTimeMode { TIME_IDLE, TIME_UPDATE };
 eTimeMode timeMode = TIME_UPDATE;
 
 Button2 btn1(BUTTON_1);
-int btnPortal = false;
 
 BH1750 lightSensor;
 
@@ -339,9 +349,12 @@ void nextTouretteCycle() {
 }
 
 void setup() {
-  delay(5000);
+  // delay(5000);
   pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
+  while (!Serial)
+    ;
+  delay(200);
 
   SPIFFS.begin();
   listDir(SPIFFS, "/", 1);
@@ -356,23 +369,19 @@ void setup() {
   // restore from memory
   loadFieldsFromEEPROM(fields, fieldCount);
 
-  btn1.setLongClickHandler([](Button2 &b) { btnPortal = true; });
+  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds[0], leds.Size()).setCorrection(TypicalSMD5050);
+  FastLED.addLeds<CHIPSET, DATA_PIN_2, COLOR_ORDER>(minuteLEDs, 4).setCorrection(TypicalSMD5050);
+  FastLED.setMaxPowerInVoltsAndMilliamps(5, MILLI_AMPS);
+  // set master brightness control
+  FastLED.setBrightness(brightness);
 
   setupTft();
   setupWifi();
   setupWeb();
 
-  FastLED.addLeds<CHIPSET, DATA_PIN, COLOR_ORDER>(leds[0], leds.Size()).setCorrection(TypicalSMD5050);
-  FastLED.addLeds<CHIPSET, DATA_PIN_2, COLOR_ORDER>(minuteLEDs, 4).setCorrection(TypicalSMD5050);
-
-  FastLED.setMaxPowerInVoltsAndMilliamps(5, MILLI_AMPS);
-
   Serial.println("initial I2C BH1750 light sensor");
   Wire.begin(I2C_SDA, I2C_SCL);
   lightSensor.begin(BH1750::CONTINUOUS_HIGH_RES_MODE);
-
-  // set master brightness control
-  FastLED.setBrightness(brightness);
 
   loopDelayMS = targetFrameRate;
   lastLoop = millis() - loopDelayMS;
@@ -653,6 +662,9 @@ void processTimeAndUpdate() {
 }
 
 void loop() {
+  drd->loop();
+  btn1.loop();
+
   handleWeb();
 
   switch (mode) {

@@ -212,75 +212,44 @@ void setupWeb() {
 bool wifiConnected() {
   // turn off the board's LED when connected to wifi
   digitalWrite(LED_BUILTIN, HIGH);
-  Serial.println();
-  Serial.println("WiFi connected");
-  Serial.print("IP address: ");
-  Serial.println(WiFi.localIP());
-  tft.fillScreen(TFT_BLACK);
-  tft.drawString("IP: " + WiFi.localIP().toString(), 5, tft.height() / 2, 4);
   saveConfigToJSON();
   digitalWrite(LED_BUILTIN, LOW);
   ntpClient.begin();
   return true;
 }
 
-void configPortal() {
-  AsyncWiFiManager wifiManager(&webServer, &dns);
-  // reset settings - for testing
-  // wifiManager.resetSettings();
-  if (!wifiManager.startConfigPortal("OnDemandAP")) {
-    Serial.println("failed to connect and hit timeout");
-    tft.fillScreen(TFT_BLACK);
-    tft.drawString("failed to connect and hit timeout", 5, tft.height() / 2, 4);
-    delay(3000);
-    // reset and try again, or maybe put it to deep sleep
-    ESP.restart();
-    delay(5000);
-  }
-}
-
 void handleWeb() {
   static bool webServerStarted = false;
-  if (btnPortal) {
-    showWiFiSymbol();
-    blitLeds();
-    // insert a delay to keep the framerate modest
-    FastLED.delay(1000 / FRAMES_PER_SECOND);
-    configPortal();
-    webServerStarted = wifiConnected();
-    btnPortal = false;
+
+  // check for connection
+  if (WiFi.status() == WL_CONNECTED) {
+    if (!webServerStarted) {
+      webServerStarted = wifiConnected();
+    }
+    ws.cleanupClients();
+    ntpClient.setDaylightSaving(daylightSaving == 1);
+    ntpClient.update();
+    EVERY_N_MILLIS(1000) {
+      String json = "{\"name\":\"time\",\"value\":\"" + ntpClient.getFormattedTime() + "\"}";
+      ws.textAll(json);
+    }
   } else {
-    // check for connection
-    if (apMode == true || (apMode == false && WiFi.status() == WL_CONNECTED)) {
-      if (!webServerStarted) {
-        webServerStarted = wifiConnected();
+    // blink the board's LED while connecting to wifi
+    // static uint8_t ledState = 0;
+    EVERY_N_MILLIS(125) {
+      // ledState = ;
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      connectTry = connectTry + 1;
+      if (connectTry > 30) {
+        Serial.println("");
+        Serial.println("could not connect to wifi, restarting...");
+        tft.fillScreen(TFT_BLACK);
+        tft.drawString("could not connect to wifi, restarting...", 5, tft.height() / 2, 4);
+        delay(3000);
+        ESP.restart();
+        delay(5000);
       }
-      ws.cleanupClients();
-      ntpClient.setDaylightSaving(daylightSaving == 1);
-      ntpClient.update();
-      EVERY_N_MILLIS(1000) {
-        String json = "{\"name\":\"time\",\"value\":\"" + ntpClient.getFormattedTime() + "\"}";
-        ws.textAll(json);
-      }
-    } else {
-      // blink the board's LED while connecting to wifi
-      // static uint8_t ledState = 0;
-      EVERY_N_MILLIS(125) {
-        // ledState = ;
-        digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-        connectTry = connectTry + 1;
-        if (connectTry > 30) {
-          Serial.println("");
-          Serial.println("could not connect to wifi, restarting...");
-          tft.fillScreen(TFT_BLACK);
-          tft.drawString("could not connect to wifi, restarting...", 5, tft.height() / 2, 4);
-          delay(3000);
-          ESP.restart();
-          delay(5000);
-        }
-        Serial.print(".");
-      }
+      Serial.print(".");
     }
   }
-  btn1.loop();
 }

@@ -46,5 +46,5 @@ void setupTft() {
   tft.fontHeight(2);
   tft.setRotation(1);
   tft.fillScreen(TFT_BLACK);
-  tft.drawString("Booting", tft.width() / 4, tft.height() / 2, 4);
+  tft.drawString("Booting...", tft.width() / 4, tft.height() / 2 - 10, 4);
 }
