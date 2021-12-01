@@ -17,10 +17,10 @@ Please remember that the full path for a file must be < 32 bits (it can't be `/j
 ## Libraries
 
 - https://github.com/PaulStoffregen/Time.git
-- TFT_eSPI@1.4.21
-- Button2@1.0.0
-- ArduinoJson
-- ESP Async WebServer
+- https://github.com/Bodmer/TFT_eSPI
+- https://github.com/LennartHennigs/Button2
+- https://github.com/bblanchon/ArduinoJson
+- https://github.com/me-no-dev/ESPAsyncWebServer
 - https://github.com/samguyer/FastLED.git
 - https://github.com/Jorgen-VikingGod/LEDMatrix.git
 - https://github.com/khoih-prog/ESP_DoubleResetDetector	
